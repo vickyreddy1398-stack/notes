@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "../../db";
-import { notes } from "../../db/schema";
+import { notes, noteTags, tags } from "../../db/schema";
 import { createCallerFactory } from "../../trpc/trpc";
 import { createUsersService } from "../users/users.service";
 import { notesRouter } from "./notes.router";
@@ -231,6 +231,44 @@ describe("notes", () => {
     expect((await ownerCaller.archived()).map((note) => note.id)).not.toContain("restore-owned");
 
     await expect(callerFactory({ db, userId: null }).archived()).rejects.toThrow();
+  });
+
+  it("filters to one owned tag and excludes archived notes while preserving order", async () => {
+    const { user } = await users.signUp({
+      email: `filter-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const [work] = await db
+      .insert(tags)
+      .values({ id: `tag-${user.id}`, ownerId: user.id, name: "work" })
+      .returning();
+    const [unused] = await db
+      .insert(tags)
+      .values({ id: `unused-${user.id}`, ownerId: user.id, name: "unused" })
+      .returning();
+    await db.insert(notes).values([
+      {
+        id: `tagged-${user.id}`,
+        ownerId: user.id,
+        title: "Tagged",
+        createdAt: new Date("2025-01-02"),
+        updatedAt: new Date("2025-01-02"),
+      },
+      { id: `archived-${user.id}`, ownerId: user.id, title: "Archived", archived: true },
+      {
+        id: `untagged-${user.id}`,
+        ownerId: user.id,
+        title: "Untagged",
+        createdAt: new Date("2025-01-03"),
+        updatedAt: new Date("2025-01-03"),
+      },
+    ]);
+    await db.insert(noteTags).values({ noteId: `tagged-${user.id}`, tagId: work.id });
+
+    const caller = callerFactory({ db, userId: user.id });
+    expect((await caller.list({ tagId: work.id })).map((note) => note.title)).toEqual(["Tagged"]);
+    expect((await caller.list()).map((note) => note.title)).not.toContain("Archived");
+    expect(await caller.list({ tagId: unused.id })).toEqual([]);
   });
 
   it("rejects unauthenticated creation", async () => {

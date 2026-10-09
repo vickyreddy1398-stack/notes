@@ -13,6 +13,8 @@ type Props = { email: string };
 
 export function NotesPage({ email }: Props) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export function NotesPage({ email }: Props) {
   const loadNotes = useCallback(async () => {
     const requestId = ++latestLoad.current;
     try {
-      const loadedNotes = await trpc.notes.list();
+      const loadedNotes = await trpc.notes.list(selectedTagId ? { tagId: selectedTagId } : {});
       if (requestId === latestLoad.current) setNotes(loadedNotes);
     } catch (cause) {
       if (requestId === latestLoad.current) {
@@ -34,10 +36,14 @@ export function NotesPage({ email }: Props) {
     } finally {
       if (requestId === latestLoad.current) setLoading(false);
     }
-  }, []);
+  }, [selectedTagId]);
 
   useEffect(() => {
     void loadNotes();
+    trpc.tags
+      .list()
+      .then(setTags)
+      .catch(() => undefined);
   }, [loadNotes]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -103,6 +109,19 @@ export function NotesPage({ email }: Props) {
       {error && <p role="alert">{error}</p>}
       <section aria-labelledby="main-list-heading">
         <h2 id="main-list-heading">Your notes</h2>
+        <label htmlFor="note-tag-filter">Filter by tag</label>
+        <select
+          id="note-tag-filter"
+          value={selectedTagId}
+          onChange={(event) => setSelectedTagId(event.target.value)}
+        >
+          <option value="">All active notes</option>
+          {tags.map((tag) => (
+            <option key={tag.id} value={tag.id}>
+              {tag.name}
+            </option>
+          ))}
+        </select>
         {loading && <p>Loading notes…</p>}
         {!loading && notes.length === 0 && <p>No notes yet.</p>}
         <ol>

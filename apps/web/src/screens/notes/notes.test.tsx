@@ -43,12 +43,13 @@ describe("NotesPage", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
       const call = fetchMock.mock.calls.length;
       if (call === 1) return initial.promise as Promise<Response>;
-      if (call === 2) return response(saved) as Promise<Response>;
+      if (call === 2) return response([]) as Promise<Response>;
+      if (call === 3) return response(saved) as Promise<Response>;
       return response([saved]) as Promise<Response>;
     });
 
     render(<NotesPage email="person@example.com" />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: saved.title } });
     fireEvent.submit(noteForm());
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Note saved"));
@@ -70,6 +71,7 @@ describe("NotesPage", () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockReturnValueOnce(response([]) as Promise<Response>)
+      .mockReturnValueOnce(response([]) as Promise<Response>)
       .mockReturnValueOnce(response(saved) as Promise<Response>)
       .mockReturnValueOnce(response([saved]) as Promise<Response>);
     render(<NotesPage email="person@example.com" />);
@@ -79,6 +81,6 @@ describe("NotesPage", () => {
     fireEvent.submit(noteForm());
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Note saved"));
     expect(screen.getByRole("heading", { name: saved.title })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 });

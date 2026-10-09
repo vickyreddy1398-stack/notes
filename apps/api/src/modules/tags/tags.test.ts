@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "../../db";
-import { noteTags, tags, users as userTable } from "../../db/schema";
+import { notes as notesTable, noteTags, tags, users as userTable } from "../../db/schema";
+import { createCallerFactory } from "../../trpc/trpc";
 import { createNotesService } from "../notes/notes.service";
 import { createUsersService } from "../users/users.service";
+import { tagsRouter } from "./tags.router";
 
 const users = createUsersService(db);
 const notes = createNotesService(db);
 const createdUserIds: string[] = [];
+const callerFactory = createCallerFactory(tagsRouter);
 
 async function createUser(label: string) {
   const { user } = await users.signUp({
@@ -82,6 +85,31 @@ describe("tag persistence", () => {
     await expect(
       db.insert(noteTags).values({ noteId: noteOne.id, tagId: tag.id }),
     ).rejects.toThrow();
+  });
+
+  it("lists only currently used, non-archived tags for the owner", async () => {
+    const owner = await createUser("used-tags-owner");
+    const other = await createUser("used-tags-other");
+    const [used] = await db
+      .insert(tags)
+      .values({ id: randomUUID(), ownerId: owner.id, name: "work" })
+      .returning();
+    await db.insert(tags).values({ id: randomUUID(), ownerId: owner.id, name: "unused" });
+    const [otherTag] = await db
+      .insert(tags)
+      .values({ id: randomUUID(), ownerId: other.id, name: "work" })
+      .returning();
+    const active = await notes.create(owner.id, { title: "Active" });
+    const archived = await notes.create(owner.id, { title: "Archived" });
+    await db.update(notesTable).set({ archived: true }).where(eq(notesTable.id, archived.id));
+    await db.insert(noteTags).values([
+      { noteId: active.id, tagId: used.id },
+      { noteId: archived.id, tagId: otherTag.id },
+    ]);
+
+    expect(await callerFactory({ db, userId: owner.id }).list()).toEqual([
+      { id: used.id, name: "work" },
+    ]);
   });
 
   it("rejects associations and tags that reference missing rows", async () => {
