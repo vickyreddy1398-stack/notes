@@ -9,6 +9,7 @@ export function ArchivedPage({ onBack }: Props) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -26,11 +27,14 @@ export function ArchivedPage({ onBack }: Props) {
 
   async function restore(id: string) {
     setError("");
+    setRestoringId(id);
     try {
       await trpc.notes.restore({ id });
       setNotes((current) => current.filter((note) => note.id !== id));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to restore note");
+    } finally {
+      setRestoringId(null);
     }
   }
 
@@ -47,8 +51,12 @@ export function ArchivedPage({ onBack }: Props) {
         {notes.map((note) => (
           <li key={note.id}>
             <span>{note.title}</span>{" "}
-            <button type="button" onClick={() => void restore(note.id)}>
-              Restore
+            <button
+              type="button"
+              disabled={restoringId !== null}
+              onClick={() => void restore(note.id)}
+            >
+              {restoringId === note.id ? "Restoring…" : "Restore"}
             </button>
           </li>
         ))}
