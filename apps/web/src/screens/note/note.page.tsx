@@ -13,7 +13,9 @@ export function NotePage({ id }: Props) {
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [archived, setArchived] = useState(false);
   const [pinning, setPinning] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +33,7 @@ export function NotePage({ id }: Props) {
         setBody(note.body ?? "");
         setTags(note.tags?.join(", ") ?? "");
         setPinned(note.pinned);
+        setArchived(note.archived);
         setLoaded(true);
       })
       .catch((cause) => {
@@ -92,6 +95,21 @@ export function NotePage({ id }: Props) {
     }
   }
 
+  async function changeArchive(nextArchived: boolean) {
+    setArchiving(true);
+    setError("");
+    try {
+      const note = nextArchived
+        ? await trpc.notes.archive({ id })
+        : await trpc.notes.restore({ id });
+      setArchived(note.archived);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to change archive state");
+    } finally {
+      setArchiving(false);
+    }
+  }
+
   async function deleteNote() {
     setDeleting(true);
     setError("");
@@ -112,6 +130,9 @@ export function NotePage({ id }: Props) {
       <p>
         <button type="button" onClick={() => void changePin(!pinned)} disabled={pinning}>
           {pinning ? "Saving…" : pinned ? "Unpin" : "Pin"}
+        </button>{" "}
+        <button type="button" onClick={() => void changeArchive(!archived)} disabled={archiving}>
+          {archiving ? "Saving…" : archived ? "Restore" : "Archive"}
         </button>
       </p>
       <form

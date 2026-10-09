@@ -12,6 +12,53 @@ const response = (data: unknown, ok = true) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("NotePage", () => {
+  it("archives and restores the loaded note", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const path = String(input);
+      const data = path.includes("notes.get")
+        ? { id: "note-1", title: "Private title", body: "Private body", archived: false }
+        : {
+            id: "note-1",
+            title: "Private title",
+            body: "Private body",
+            archived: path.includes("notes.archive"),
+          };
+      return response(data) as Promise<Response>;
+    });
+    render(<NotePage id="note-1" />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps archive state when archiving fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const path = String(input);
+      return response(
+        path.includes("notes.get")
+          ? { id: "note-1", title: "Private title", body: "Private body", archived: false }
+          : undefined,
+        !(path.includes("notes.archive") && init?.method === "POST"),
+      ) as Promise<Response>;
+    });
+    render(<NotePage id="note-1" />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("note not found"));
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+  });
+
   it("pins and unpins the loaded note", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input, _init) => {
       const path = String(input);
