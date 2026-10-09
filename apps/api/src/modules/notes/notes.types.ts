@@ -10,3 +10,10 @@ export const createNoteInput = z
   })
   .strict();
 export type CreateNoteInput = z.infer<typeof createNoteInput>;
+
+export const getNoteInput = z
+  .object({
+    id: z.string().min(1),
+  })
+  .strict();
+export type GetNoteInput = z.infer<typeof getNoteInput>;

@@ -8,6 +8,16 @@ import { notesRouter } from "./notes.router";
 
 const callerFactory = createCallerFactory(notesRouter);
 const users = createUsersService(db);
+type ErrorShape = { code: string; message: string };
+
+async function captureError(promise: Promise<unknown>): Promise<ErrorShape> {
+  try {
+    await promise;
+    throw new Error("expected promise to reject");
+  } catch (error) {
+    return error as ErrorShape;
+  }
+}
 
 beforeAll(async () => {
   await db.delete(notes);
@@ -79,6 +89,45 @@ describe("notes", () => {
     const result = await callerFactory({ db, userId: first.user.id }).list();
     expect(result.map((note) => note.title)).toEqual(["Newer", "Older"]);
     expect(await callerFactory({ db, userId: other.user.id }).list()).toHaveLength(1);
+  });
+
+  it("retrieves notes only for their owner", async () => {
+    const { user: ownerA } = await users.signUp({
+      email: `retrieve-a-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const { user: ownerB } = await users.signUp({
+      email: `retrieve-b-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const callerA = callerFactory({ db, userId: ownerA.id });
+    const callerB = callerFactory({ db, userId: ownerB.id });
+    const noteA = await callerA.create({ title: "A private title", body: "A private body" });
+    const noteB = await callerB.create({ title: "B private title", body: "B private body" });
+
+    await expect(callerA.get({ id: noteA.id })).resolves.toMatchObject(noteA);
+    await expect(callerB.get({ id: noteB.id })).resolves.toMatchObject(noteB);
+
+    const errorA = await captureError(callerA.get({ id: noteB.id }));
+    const errorB = await captureError(callerB.get({ id: noteA.id }));
+    const missingA = await captureError(callerA.get({ id: "missing-note" }));
+    const missingB = await captureError(callerB.get({ id: "missing-note" }));
+
+    for (const error of [errorA, errorB, missingA, missingB]) {
+      expect(error).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+      expect(JSON.stringify(error)).not.toContain("private");
+    }
+    expect(errorA).toMatchObject({ code: errorB.code, message: errorB.message });
+    expect(missingA).toMatchObject({ code: errorA.code, message: errorA.message });
+    expect(missingB).toMatchObject({ code: errorB.code, message: errorB.message });
+  });
+
+  it("rejects unauthenticated retrieval", async () => {
+    await expect(callerFactory({ db, userId: null }).get({ id: "any-note" })).rejects.toMatchObject(
+      {
+        code: "UNAUTHORIZED",
+      },
+    );
   });
 
   it("rejects unauthenticated creation", async () => {
