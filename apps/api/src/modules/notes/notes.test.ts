@@ -225,6 +225,22 @@ describe("notes", () => {
         updatedAt: new Date("2025-01-02T00:00:00.000Z"),
       },
       {
+        id: "archived-tie-old",
+        ownerId: owner.user.id,
+        title: "Tie old",
+        archived: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-02T00:00:00.000Z"),
+      },
+      {
+        id: "archived-tie-new",
+        ownerId: owner.user.id,
+        title: "Tie new",
+        archived: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-02T00:00:00.000Z"),
+      },
+      {
         id: "archived-new",
         ownerId: owner.user.id,
         title: "New",
@@ -251,8 +267,16 @@ describe("notes", () => {
     ]);
 
     const ownerCaller = callerFactory({ db, userId: owner.user.id });
-    expect((await ownerCaller.archived()).map((note) => note.title)).toEqual(["New", "Old"]);
+    expect((await ownerCaller.archived()).map((note) => note.title)).toEqual([
+      "New",
+      "Tie old",
+      "Tie new",
+      "Old",
+    ]);
     expect(await callerFactory({ db, userId: other.user.id }).archived()).toHaveLength(1);
+    await expect(callerFactory({ db, userId: null }).archived()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("restores only the owner's archived note and hides other or missing notes", async () => {
@@ -269,12 +293,18 @@ describe("notes", () => {
       { id: "restore-other", ownerId: other.user.id, title: "Other", archived: true },
     ]);
     const ownerCaller = callerFactory({ db, userId: owner.user.id });
-    await expect(ownerCaller.restore({ id: "restore-other" })).rejects.toThrow("note not found");
-    await expect(ownerCaller.restore({ id: "missing-note" })).rejects.toThrow("note not found");
+    const otherCaller = callerFactory({ db, userId: other.user.id });
+    const privateError = await captureError(otherCaller.restore({ id: "restore-owned" }));
+    const missingError = await captureError(ownerCaller.restore({ id: "missing-note" }));
+    expect(privateError).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+    expect(missingError).toMatchObject({ code: privateError.code, message: privateError.message });
     await ownerCaller.restore({ id: "restore-owned" });
     expect((await ownerCaller.archived()).map((note) => note.id)).not.toContain("restore-owned");
-
-    await expect(callerFactory({ db, userId: null }).archived()).rejects.toThrow();
+    await expect(
+      callerFactory({ db, userId: null }).restore({ id: "restore-other" }),
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("rejects combining search and tag filtering", async () => {
