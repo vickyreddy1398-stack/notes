@@ -277,6 +277,25 @@ describe("notes", () => {
     await expect(callerFactory({ db, userId: null }).archived()).rejects.toThrow();
   });
 
+  it("rejects combining search and tag filtering", async () => {
+    const { user } = await users.signUp({
+      email: `filter-input-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    await expect(
+      callerFactory({ db, userId: user.id }).list({ tagId: "tag", search: "text" }),
+    ).rejects.toThrow();
+    await expect(callerFactory({ db, userId: user.id }).list({ tagId: "tag" })).resolves.toEqual(
+      [],
+    );
+    await expect(callerFactory({ db, userId: user.id }).list({ search: "text" })).resolves.toEqual(
+      [],
+    );
+    await expect(callerFactory({ db, userId: null }).list({ tagId: "tag" })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
   it("filters to one owned tag and excludes archived notes while preserving order", async () => {
     const { user } = await users.signUp({
       email: `filter-${Date.now()}@example.com`,

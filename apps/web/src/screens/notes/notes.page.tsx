@@ -81,16 +81,19 @@ export function NotesPage({ email }: Props) {
   async function submitSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const parsed = listNotesInput.safeParse({
-      tagId: selectedTagId || undefined,
-      search: searchDraft || undefined,
-    });
+    const parsed = listNotesInput.safeParse({ search: searchDraft || undefined });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid search");
       return;
     }
-    const nextSearch = parsed.data.search ?? "";
-    setSearch(nextSearch);
+    setSelectedTagId("");
+    setSearch(parsed.data.search ?? "");
+  }
+
+  function selectTag(tagId: string) {
+    setSearchDraft("");
+    setSearch("");
+    setSelectedTagId(tagId);
   }
 
   if (archivedView) return <ArchivedPage onBack={() => setArchivedView(false)} />;
@@ -147,7 +150,7 @@ export function NotesPage({ email }: Props) {
         <select
           id="note-tag-filter"
           value={selectedTagId}
-          onChange={(event) => setSelectedTagId(event.target.value)}
+          onChange={(event) => selectTag(event.target.value)}
         >
           <option value="">All active notes</option>
           {tags.map((tag) => (

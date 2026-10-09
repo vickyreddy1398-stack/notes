@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { db } from "../../api/src/db";
-import { notes } from "../../api/src/db/schema";
+import { notes, noteTags, tags } from "../../api/src/db/schema";
 import { createUsersService } from "../../api/src/modules/users/users.service";
 
 async function signUp(page: import("@playwright/test").Page) {
@@ -50,6 +50,59 @@ test("searches only matching active notes owned by the signed-in user", async ({
   await expect(list).toContainText("Other title");
   await expect(list).not.toContainText("Archived project planning");
   await expect(list).not.toContainText("Completely unrelated");
+});
+
+test("filters active notes by one available tag without combining search", async ({ page }) => {
+  await signUp(page);
+  const ownerId = await page.evaluate(async () => {
+    const response = await fetch("http://127.0.0.1:3001/api/trpc/users.currentUser", {
+      credentials: "include",
+    });
+    return ((await response.json()) as { result: { data: { id: string } } }).result.data.id;
+  });
+  const suffix = `${ownerId}-${Date.now()}`;
+  const other = await createUsersService(db).signUp({
+    email: `browser-tag-other-${Date.now()}@example.com`,
+    password: "password123",
+  });
+  const [tag] = await db
+    .insert(tags)
+    .values({ id: `browser-tag-${suffix}`, ownerId, name: "Important" })
+    .returning();
+  const tagged = `browser-tagged-${suffix}`;
+  const untagged = `browser-untagged-${suffix}`;
+  const archived = `browser-tag-archived-${suffix}`;
+  const privateNote = `browser-tag-private-${suffix}`;
+  await db.insert(notes).values([
+    { id: tagged, ownerId, title: "Tagged note" },
+    { id: untagged, ownerId, title: "Other active note" },
+    { id: archived, ownerId, title: "Archived tagged note", archived: true },
+    { id: privateNote, ownerId: other.user.id, title: "Private tagged note" },
+  ]);
+  await db.insert(noteTags).values([
+    { noteId: tagged, tagId: tag.id },
+    { noteId: archived, tagId: tag.id },
+  ]);
+
+  await page.reload();
+  await expect(page.getByLabel("Filter by tag")).toContainText("Important");
+  await page.getByLabel("Filter by tag").selectOption(tag.id);
+  const list = page.getByRole("list", { name: "Active notes" });
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await expect(list).toContainText("Tagged note");
+  await expect(list).not.toContainText("Other active note");
+  await expect(list).not.toContainText("Archived tagged note");
+  await expect(list).not.toContainText("Private tagged note");
+
+  await page.getByLabel("Search notes").fill("Other active");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(list).toContainText("Other active note");
+  await expect(page.getByLabel("Filter by tag")).toHaveValue("");
+
+  await page.getByLabel("Filter by tag").selectOption(tag.id);
+  await expect(list).toContainText("Tagged note");
+  await expect(list).not.toContainText("Other active note");
+  await expect(page.getByLabel("Search notes")).toHaveValue("");
 });
 
 test("renders active notes in the required order", async ({ page }) => {
