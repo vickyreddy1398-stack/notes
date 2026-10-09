@@ -5,6 +5,7 @@ import {
   NOTE_TITLE_MAX,
 } from "../../../../api/src/modules/notes/notes.types";
 import { trpc } from "../../lib/trpc";
+import { ArchivedPage } from "../archived/archived.page";
 
 type Note = Awaited<ReturnType<typeof trpc.notes.list>>[number];
 
@@ -18,6 +19,7 @@ export function NotesPage({ email }: Props) {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [archivedView, setArchivedView] = useState(false);
   const latestLoad = useRef(0);
 
   const loadNotes = useCallback(async () => {
@@ -61,10 +63,15 @@ export function NotesPage({ email }: Props) {
     }
   }
 
+  if (archivedView) return <ArchivedPage onBack={() => setArchivedView(false)} />;
+
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
       <h1>Notes</h1>
       <p>Signed in as {email}</p>
+      <button type="button" onClick={() => setArchivedView(true)}>
+        Archived
+      </button>
       <section aria-labelledby="quick-note-heading">
         <h2 id="quick-note-heading">Quick note</h2>
         <form onSubmit={submit}>

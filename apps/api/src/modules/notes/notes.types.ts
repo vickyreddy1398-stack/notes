@@ -17,3 +17,6 @@ export const getNoteInput = z
   })
   .strict();
 export type GetNoteInput = z.infer<typeof getNoteInput>;
+
+export const noteIdInput = z.object({ id: z.string().min(1) }).strict();
+export type NoteIdInput = z.infer<typeof noteIdInput>;
