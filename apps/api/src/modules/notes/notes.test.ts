@@ -391,7 +391,7 @@ describe("notes", () => {
     });
   });
 
-  it("allows independent and combined search and tag filters", async () => {
+  it("allows independent search and tag filters and rejects combined input", async () => {
     const { user } = await users.signUp({
       email: `filter-input-${Date.now()}@example.com`,
       password: "password123",
@@ -413,9 +413,9 @@ describe("notes", () => {
     const caller = callerFactory({ db, userId: user.id });
     await expect(caller.list({ tagId: tag.id })).resolves.toHaveLength(2);
     await expect(caller.list({ search: "project" })).resolves.toHaveLength(2);
-    await expect(caller.list({ tagId: tag.id, search: "project" })).resolves.toMatchObject([
-      { id: `filter-input-match-${user.id}` },
-    ]);
+    await expect(caller.list({ tagId: tag.id, search: "project" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
     await expect(callerFactory({ db, userId: null }).list({ tagId: tag.id })).rejects.toMatchObject(
       {
         code: "UNAUTHORIZED",
@@ -426,6 +426,10 @@ describe("notes", () => {
   it("filters to one owned tag and excludes archived notes while preserving order", async () => {
     const { user } = await users.signUp({
       email: `filter-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const { user: other } = await users.signUp({
+      email: `filter-other-${Date.now()}@example.com`,
       password: "password123",
     });
     const [work] = await db
@@ -459,6 +463,14 @@ describe("notes", () => {
     expect((await caller.list({ tagId: work.id })).map((note) => note.title)).toEqual(["Tagged"]);
     expect((await caller.list()).map((note) => note.title)).not.toContain("Archived");
     expect(await caller.list({ tagId: unused.id })).toEqual([]);
+    const [foreign] = await db
+      .insert(tags)
+      .values({ id: `foreign-${user.id}`, ownerId: other.id, name: "foreign" })
+      .returning();
+    const foreignError = await captureError(caller.list({ tagId: foreign.id }));
+    const missingError = await captureError(caller.list({ tagId: "missing-tag" }));
+    expect(foreignError).toMatchObject({ code: "NOT_FOUND", message: "tag not found" });
+    expect(missingError).toMatchObject({ code: foreignError.code, message: foreignError.message });
   });
 
   it("permanently deletes an owned note, cascades associations, and removes unused filter tags", async () => {

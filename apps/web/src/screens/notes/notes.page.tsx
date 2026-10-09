@@ -30,11 +30,19 @@ export function NotesPage({ email }: Props) {
   const loadNotes = useCallback(
     async (searchOverride = search) => {
       const requestId = ++latestLoad.current;
+      const input = selectedTagId
+        ? { tagId: selectedTagId }
+        : searchOverride
+          ? { search: searchOverride }
+          : {};
+      const parsed = listNotesInput.safeParse(input);
+      if (!parsed.success) {
+        setError(parsed.error.issues[0]?.message ?? "Invalid note filter");
+        setLoading(false);
+        return;
+      }
       try {
-        const loadedNotes = await trpc.notes.list({
-          ...(selectedTagId ? { tagId: selectedTagId } : {}),
-          ...(searchOverride ? { search: searchOverride } : {}),
-        });
+        const loadedNotes = await trpc.notes.list(parsed.data);
         if (requestId === latestLoad.current) setNotes(loadedNotes);
       } catch (cause) {
         if (requestId === latestLoad.current) {
@@ -86,11 +94,14 @@ export function NotesPage({ email }: Props) {
       setError(parsed.error.issues[0]?.message ?? "Invalid search");
       return;
     }
-    setSearch(parsed.data.search ?? "");
+    setSelectedTagId("");
+    setSearch("search" in parsed.data ? parsed.data.search : "");
   }
 
   function selectTag(tagId: string) {
     setSelectedTagId(tagId);
+    setSearchDraft("");
+    setSearch("");
   }
 
   if (archivedView) return <ArchivedPage onBack={() => setArchivedView(false)} />;
