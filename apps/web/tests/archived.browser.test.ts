@@ -97,7 +97,13 @@ test("restores an archived note and removes it from the view", async ({ page }) 
 
   await openArchived(page);
   const row = page.locator("li").filter({ hasText: "Restore me" });
-  await row.getByRole("button", { name: "Restore" }).click();
+  const restoreButton = row.locator("button");
+  await page.route("**/api/trpc/notes.restore", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await route.continue();
+  });
+  await restoreButton.click();
+  await expect(restoreButton).toBeDisabled();
   await expect(row).toHaveCount(0);
   const rows = await db.select().from(notes);
   const restored = rows.find((note) => note.id === id);
