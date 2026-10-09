@@ -632,7 +632,7 @@ describe("notes", () => {
       id: note.id,
       title: "Tagged",
       body: "",
-      tags: " Work, work,  PERSONAL , , ",
+      tags: " PERSONAL, work, work, , ",
     });
     await ownerCaller.update({
       id: sharedNote.id,
@@ -641,9 +641,22 @@ describe("notes", () => {
       tags: "work",
     });
     expect(saved.id).toBe(note.id);
-    expect(await ownerCaller.get({ id: note.id })).toMatchObject({ tags: ["work", "personal"] });
+    expect(await ownerCaller.get({ id: note.id })).toMatchObject({ tags: ["personal", "work"] });
     const ownerTags = await db.select().from(tags).where(eq(tags.ownerId, owner.user.id));
     expect(ownerTags.map((tag) => tag.name).sort()).toEqual(["personal", "work"]);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const beforeReorderedSave = (await db.select().from(notes).where(eq(notes.id, note.id)))[0];
+    const reordered = await ownerCaller.update({
+      id: note.id,
+      title: "Tagged",
+      body: "",
+      tags: "personal, work",
+    });
+    expect(reordered.updatedAt).toEqual(beforeReorderedSave.updatedAt);
+    expect(await ownerCaller.get({ id: note.id })).toMatchObject({
+      tags: ["personal", "work"],
+    });
 
     await ownerCaller.update({ id: note.id, title: "Tagged", body: "", tags: "work" });
     const filterTags = await createCallerFactory(tagsRouter)({ db, userId: owner.user.id }).list();

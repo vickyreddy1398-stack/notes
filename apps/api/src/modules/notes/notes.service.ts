@@ -141,9 +141,11 @@ export function createNotesService(db: Db) {
         if (!current) throw notFound("note");
 
         const currentNames = await getTagNames(tx as unknown as Db, ownerId, input.id);
+        const currentSorted = [...currentNames].sort();
+        const inputSorted = [...input.tags].sort();
         const tagsChanged =
-          currentNames.length !== input.tags.length ||
-          currentNames.some((name) => !input.tags.includes(name));
+          currentSorted.length !== inputSorted.length ||
+          currentSorted.some((name, index) => name !== inputSorted[index]);
         const contentChanged = current.title !== input.title || current.body !== input.body;
         const [note] = await tx
           .update(notes)
