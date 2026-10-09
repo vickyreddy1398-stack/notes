@@ -128,7 +128,9 @@ export function NotesPage({ email }: Props) {
           {notes.map((note) => (
             <li key={note.id}>
               <article>
-                <h3>{note.title}</h3>
+                <h3>
+                  <a href={`/notes/${encodeURIComponent(note.id)}`}>{note.title}</a>
+                </h3>
                 {note.body && <p style={{ whiteSpace: "pre-wrap" }}>{note.body}</p>}
               </article>
             </li>
