@@ -25,7 +25,9 @@ describe("NotesPage", () => {
   it("shows the quick-entry controls and validates note content", async () => {
     vi.spyOn(globalThis, "fetch").mockReturnValue(response([]) as Promise<Response>);
     render(<NotesPage email="person@example.com" />);
-    await waitFor(() => expect(screen.getByText("No notes yet.")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
 
     fireEvent.submit(noteForm());
     expect(screen.getByRole("alert")).toHaveTextContent("Title is required");
@@ -60,6 +62,47 @@ describe("NotesPage", () => {
     );
   });
 
+  it("shows the create-first-note hint for an empty search result", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(response([]) as Promise<Response>)
+      .mockReturnValueOnce(response([]) as Promise<Response>)
+      .mockReturnValueOnce(response([]) as Promise<Response>);
+    render(<NotesPage email="person@example.com" />);
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
+    fireEvent.change(screen.getByLabelText("Search notes"), { target: { value: "missing" } });
+    const searchForm = screen.getByRole("button", { name: "Search" }).closest("form");
+    if (!searchForm) throw new Error("Search form not found");
+    fireEvent.submit(searchForm);
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
+    expect(fetchMock.mock.calls[2]?.[0]).toContain(
+      encodeURIComponent(JSON.stringify({ search: "missing" })),
+    );
+  });
+
+  it("shows the create-first-note hint for an empty tag result", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(response([]) as Promise<Response>)
+      .mockReturnValueOnce(response([{ id: "tag-1", name: "Work" }]) as Promise<Response>)
+      .mockReturnValueOnce(response([]) as Promise<Response>);
+    render(<NotesPage email="person@example.com" />);
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
+    fireEvent.change(screen.getByLabelText("Filter by tag"), { target: { value: "tag-1" } });
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
+    expect(fetchMock.mock.calls[2]?.[0]).toContain(
+      encodeURIComponent(JSON.stringify({ tagId: "tag-1" })),
+    );
+  });
+
   it("submits a search and renders the filtered active notes", async () => {
     const matching = {
       id: "matching",
@@ -76,7 +119,9 @@ describe("NotesPage", () => {
       .mockReturnValueOnce(response([]) as Promise<Response>)
       .mockReturnValueOnce(response([matching]) as Promise<Response>);
     render(<NotesPage email="person@example.com" />);
-    await waitFor(() => expect(screen.getByText("No notes yet.")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
     fireEvent.change(screen.getByLabelText("Search notes"), { target: { value: "plan" } });
     const searchForm = screen.getByRole("button", { name: "Search" }).closest("form");
     if (!searchForm) throw new Error("Search form not found");
@@ -104,7 +149,9 @@ describe("NotesPage", () => {
       .mockReturnValueOnce(response(saved) as Promise<Response>)
       .mockReturnValueOnce(response([saved]) as Promise<Response>);
     render(<NotesPage email="person@example.com" />);
-    await waitFor(() => expect(screen.getByText("No notes yet.")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Create your first note to get started.")).toBeInTheDocument(),
+    );
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: saved.title } });
     fireEvent.change(screen.getByLabelText("Body"), { target: { value: saved.body } });
     fireEvent.submit(noteForm());
