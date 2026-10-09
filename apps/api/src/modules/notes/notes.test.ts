@@ -313,6 +313,56 @@ describe("notes", () => {
     });
   });
 
+  it("archives and restores only the owner's note without changing updatedAt", async () => {
+    const owner = await users.signUp({
+      email: `archive-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `archive-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    const otherCaller = callerFactory({ db, userId: other.user.id });
+    const created = await ownerCaller.create({ title: "Move me" });
+    const [before] = await db.select().from(notes).where(eq(notes.id, created.id));
+    await expect(ownerCaller.restore({ id: created.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "note not found",
+    });
+
+    const archived = await ownerCaller.archive({ id: created.id });
+    expect(archived).toMatchObject({ id: created.id, archived: true });
+    expect(archived.updatedAt).toEqual(before.updatedAt);
+    expect((await db.select().from(notes).where(eq(notes.id, created.id)))[0]).toMatchObject({
+      archived: true,
+      updatedAt: before.updatedAt,
+    });
+    expect((await ownerCaller.list()).map((note) => note.id)).not.toContain(created.id);
+
+    const restored = await ownerCaller.restore({ id: created.id });
+    expect(restored).toMatchObject({ id: created.id, archived: false });
+    expect(restored.updatedAt).toEqual(before.updatedAt);
+    expect((await ownerCaller.list()).map((note) => note.id)).toContain(created.id);
+
+    const privateError = await captureError(otherCaller.archive({ id: created.id }));
+    const missingError = await captureError(ownerCaller.archive({ id: "missing-archive-note" }));
+    expect(privateError).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+    expect(missingError).toMatchObject({ code: privateError.code, message: privateError.message });
+    await expect(ownerCaller.archive({ id: created.id })).resolves.toMatchObject({
+      archived: true,
+    });
+    await expect(ownerCaller.archive({ id: created.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "note not found",
+    });
+    await expect(
+      callerFactory({ db, userId: null }).restore({ id: created.id }),
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
   it("restores only the owner's archived note and hides other or missing notes", async () => {
     const owner = await users.signUp({
       email: `restore-owner-${Date.now()}@example.com`,

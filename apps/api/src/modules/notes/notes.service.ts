@@ -113,10 +113,20 @@ export function createNotesService(db: Db) {
       return note;
     },
 
+    async archive(ownerId: string, id: string) {
+      const [note] = await db
+        .update(notes)
+        .set({ archived: true })
+        .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId), eq(notes.archived, false)))
+        .returning();
+      if (!note) throw notFound("note");
+      return note;
+    },
+
     async restore(ownerId: string, id: string) {
       const [note] = await db
         .update(notes)
-        .set({ archived: false, updatedAt: new Date() })
+        .set({ archived: false })
         .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId), eq(notes.archived, true)))
         .returning();
       if (!note) throw notFound("note");

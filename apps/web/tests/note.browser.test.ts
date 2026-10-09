@@ -27,6 +27,13 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
   await expect(page.getByLabel("Body")).toHaveValue("Private editor body");
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pin" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
+  await page.getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
   await page.getByRole("button", { name: "Pin" }).click();
   await expect(page.getByRole("button", { name: "Unpin" })).toBeVisible();
   await page.reload();
