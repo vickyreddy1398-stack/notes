@@ -119,6 +119,8 @@ describe("notes", () => {
 
     const result = await callerFactory({ db, userId: first.user.id }).list();
     expect(result.map((note) => note.title)).toEqual(["Pinned", "Updated", "Tie new", "Tie old"]);
+    expect(result.map((note) => note.body)).toEqual([null, null, null, null]);
+    expect(result.every((note) => note.archived === false)).toBe(true);
     expect(await callerFactory({ db, userId: other.user.id }).list()).toHaveLength(1);
   });
 

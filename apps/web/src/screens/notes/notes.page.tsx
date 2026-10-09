@@ -124,7 +124,7 @@ export function NotesPage({ email }: Props) {
         </select>
         {loading && <p>Loading notes…</p>}
         {!loading && notes.length === 0 && <p>No notes yet.</p>}
-        <ol>
+        <ol aria-label="Active notes">
           {notes.map((note) => (
             <li key={note.id}>
               <article>
