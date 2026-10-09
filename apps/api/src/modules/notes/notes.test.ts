@@ -504,6 +504,10 @@ describe("notes", () => {
       email: `delete-owner-${Date.now()}@example.com`,
       password: "password123",
     });
+    const { user: other } = await users.signUp({
+      email: `delete-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
     const [unusedTag, usedTag] = await db
       .insert(tags)
       .values([
@@ -512,6 +516,7 @@ describe("notes", () => {
       ])
       .returning();
     const ownerCaller = callerFactory({ db, userId: owner.id });
+    const otherCaller = callerFactory({ db, userId: other.id });
     const deleted = await ownerCaller.create({ title: "Delete me" });
     const remaining = await ownerCaller.create({ title: "Keep me" });
     await db.insert(noteTags).values([
@@ -520,11 +525,19 @@ describe("notes", () => {
       { noteId: remaining.id, tagId: usedTag.id },
     ]);
 
+    const privateError = await captureError(otherCaller.delete({ id: deleted.id }));
+    const missingError = await captureError(ownerCaller.delete({ id: "missing-delete-tag-note" }));
+    expect(privateError).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+    expect(missingError).toMatchObject({ code: privateError.code, message: privateError.message });
+
     await expect(ownerCaller.delete({ id: deleted.id })).resolves.toMatchObject({ id: deleted.id });
     expect(await db.select().from(notes).where(eq(notes.id, deleted.id))).toEqual([]);
     expect(await db.select().from(noteTags).where(eq(noteTags.noteId, deleted.id))).toEqual([]);
+    expect(await db.select().from(tags).where(eq(tags.id, unusedTag.id))).toEqual([
+      expect.objectContaining({ ownerId: owner.id, name: "unused" }),
+    ]);
     const filterTags = await createCallerFactory(tagsRouter)({ db, userId: owner.id }).list();
-    expect(filterTags.map((tag) => tag.name)).toEqual(["used"]);
+    expect(filterTags).toEqual([{ id: usedTag.id, name: "used" }]);
   });
 
   it("only allows the owner to permanently delete and rejects unauthenticated callers", async () => {
