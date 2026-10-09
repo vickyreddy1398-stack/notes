@@ -23,7 +23,15 @@ export const trpc = {
     currentUser: () => call<User>("users.currentUser"),
   },
   notes: {
-    create: (input: { title: string; body?: string }) =>
-      call<{ id: string; title: string; body: string | null }>("notes.create", input),
+    list: () => call<Note[]>("notes.list"),
+    create: (input: { title: string; body?: string }) => call<Note>("notes.create", input),
   },
+};
+
+type Note = {
+  id: string;
+  title: string;
+  body: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

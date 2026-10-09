@@ -41,6 +41,46 @@ describe("notes", () => {
     await expect(caller.create({ title: "ok", body: "x".repeat(10001) })).rejects.toThrow();
   });
 
+  it("lists only the owner's notes in newest-first order", async () => {
+    const first = await users.signUp({
+      email: `list-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `list-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const older = new Date("2025-01-01T00:00:00.000Z");
+    const newer = new Date("2025-01-02T00:00:00.000Z");
+    await db.insert(notes).values([
+      {
+        id: "list-older",
+        ownerId: first.user.id,
+        title: "Older",
+        createdAt: older,
+        updatedAt: older,
+      },
+      {
+        id: "list-newer",
+        ownerId: first.user.id,
+        title: "Newer",
+        createdAt: newer,
+        updatedAt: newer,
+      },
+      {
+        id: "list-other",
+        ownerId: other.user.id,
+        title: "Other user",
+        createdAt: newer,
+        updatedAt: newer,
+      },
+    ]);
+
+    const result = await callerFactory({ db, userId: first.user.id }).list();
+    expect(result.map((note) => note.title)).toEqual(["Newer", "Older"]);
+    expect(await callerFactory({ db, userId: other.user.id }).list()).toHaveLength(1);
+  });
+
   it("rejects unauthenticated creation", async () => {
     await expect(callerFactory({ db, userId: null }).create({ title: "no" })).rejects.toThrow();
   });
