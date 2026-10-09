@@ -86,7 +86,14 @@ test("restores an archived note and removes it from the view", async ({ page }) 
   await signUp(page);
   const ownerId = await currentUserId(page);
   const id = `restore-browser-${ownerId}-${Date.now()}`;
-  await db.insert(notes).values({ id, ownerId, title: "Restore me", archived: true });
+  const originalUpdatedAt = new Date("2025-02-03T04:05:06.000Z");
+  await db.insert(notes).values({
+    id,
+    ownerId,
+    title: "Restore me",
+    archived: true,
+    updatedAt: originalUpdatedAt,
+  });
 
   await openArchived(page);
   const row = page.locator("li").filter({ hasText: "Restore me" });
@@ -95,6 +102,7 @@ test("restores an archived note and removes it from the view", async ({ page }) 
   const rows = await db.select().from(notes);
   const restored = rows.find((note) => note.id === id);
   expect(restored?.archived).toBe(false);
+  expect(restored?.updatedAt.getTime()).toBe(originalUpdatedAt.getTime());
 });
 
 test("shows a create-first-note hint when there are no archived notes", async ({ page }) => {
