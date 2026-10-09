@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import { db } from "./db";
+import { createUsersService } from "./modules/users/users.service";
 import { appRouter } from "./trpc/app.router";
 
 export function createApp() {
@@ -14,7 +15,14 @@ export function createApp() {
     "/api/trpc",
     createExpressMiddleware({
       router: appRouter,
-      createContext: ({ req, res }) => ({ userId: null, db, req, res }),
+      createContext: async ({ req, res }) => ({
+        userId: req.cookies?.session
+          ? ((await createUsersService(db).findUserBySession(req.cookies.session))?.id ?? null)
+          : null,
+        db,
+        req,
+        res,
+      }),
     }),
   );
   return app;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
+import { QuickNotePage } from "../quick-note/quick-note.page";
 
 type User = { email: string };
 
@@ -27,13 +28,7 @@ export function SignUpPage() {
     }
   }
 
-  if (user)
-    return (
-      <main>
-        <h1>Notes</h1>
-        <p>Signed in as {user.email}</p>
-      </main>
-    );
+  if (user) return <QuickNotePage email={user.email} />;
   return (
     <main>
       <h1>Sign up</h1>

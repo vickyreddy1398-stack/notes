@@ -1,0 +1,12 @@
+import { z } from "zod";
+
+export const NOTE_TITLE_MAX = 200;
+export const NOTE_BODY_MAX = 10_000;
+
+export const createNoteInput = z
+  .object({
+    title: z.string().min(1, "Title is required").max(NOTE_TITLE_MAX, "Title is too long"),
+    body: z.string().max(NOTE_BODY_MAX, "Body is too long").optional(),
+  })
+  .strict();
+export type CreateNoteInput = z.infer<typeof createNoteInput>;

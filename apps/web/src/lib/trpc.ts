@@ -1,6 +1,6 @@
 type User = { id: string; email: string };
 
-async function call(path: string, input?: unknown): Promise<User> {
+async function call<T>(path: string, input?: unknown): Promise<T> {
   const baseUrl =
     window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
       ? "http://127.0.0.1:3001/api/trpc"
@@ -19,7 +19,11 @@ async function call(path: string, input?: unknown): Promise<User> {
 
 export const trpc = {
   users: {
-    signUp: (input: { email: string; password: string }) => call("users.signUp", input),
-    currentUser: () => call("users.currentUser"),
+    signUp: (input: { email: string; password: string }) => call<User>("users.signUp", input),
+    currentUser: () => call<User>("users.currentUser"),
+  },
+  notes: {
+    create: (input: { title: string; body?: string }) =>
+      call<{ id: string; title: string; body: string | null }>("notes.create", input),
   },
 };
