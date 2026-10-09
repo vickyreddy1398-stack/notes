@@ -12,12 +12,14 @@ function escapeLike(value: string) {
 export function createNotesService(db: Db) {
   return {
     async list(ownerId: string, input: ListNotesInput = {}) {
-      const conditions = [eq(notes.ownerId, ownerId), eq(notes.archived, false)];
-      if (input.search) {
-        const search = `%${escapeLike(input.search)}%`;
-        const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
-        if (searchCondition) conditions.push(searchCondition);
-      }
+      const activeOwnerConditions = [eq(notes.ownerId, ownerId), eq(notes.archived, false)];
+      const order = [
+        desc(notes.pinned),
+        desc(notes.updatedAt),
+        desc(notes.createdAt),
+        desc(notes.id),
+      ] as const;
+
       if (input.tagId) {
         return db
           .select({
@@ -33,19 +35,27 @@ export function createNotesService(db: Db) {
           .from(notes)
           .innerJoin(noteTags, eq(noteTags.noteId, notes.id))
           .innerJoin(tags, eq(tags.id, noteTags.tagId))
-          .where(and(...conditions, eq(noteTags.tagId, input.tagId), eq(tags.ownerId, ownerId)))
-          .orderBy(
-            desc(notes.pinned),
-            desc(notes.updatedAt),
-            desc(notes.createdAt),
-            desc(notes.id),
-          );
+          .where(
+            and(
+              ...activeOwnerConditions,
+              eq(noteTags.tagId, input.tagId),
+              eq(tags.ownerId, ownerId),
+            ),
+          )
+          .orderBy(...order);
+      }
+
+      const conditions = [...activeOwnerConditions];
+      if (input.search) {
+        const search = `%${escapeLike(input.search)}%`;
+        const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
+        if (searchCondition) conditions.push(searchCondition);
       }
       return db
         .select()
         .from(notes)
         .where(and(...conditions))
-        .orderBy(desc(notes.pinned), desc(notes.updatedAt), desc(notes.createdAt), desc(notes.id));
+        .orderBy(...order);
     },
 
     async getOwned(ownerId: string, id: string) {

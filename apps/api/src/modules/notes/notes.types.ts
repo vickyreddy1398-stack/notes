@@ -23,5 +23,8 @@ export type NoteIdInput = z.infer<typeof noteIdInput>;
 
 export const listNotesInput = z
   .object({ tagId: z.string().optional(), search: z.string().optional() })
-  .strict();
+  .strict()
+  .refine(({ tagId, search }) => !(tagId && search), {
+    message: "Search and tag filtering cannot be combined",
+  });
 export type ListNotesInput = z.infer<typeof listNotesInput>;
