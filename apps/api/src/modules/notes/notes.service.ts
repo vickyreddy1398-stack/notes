@@ -1,14 +1,23 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
 import type { Db } from "../../db";
 import { notes, noteTags, tags } from "../../db/schema";
 import { notFound } from "../../lib/errors";
 import type { CreateNoteInput, ListNotesInput } from "./notes.types";
 
+function escapeLike(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 export function createNotesService(db: Db) {
   return {
     async list(ownerId: string, input: ListNotesInput = {}) {
       const conditions = [eq(notes.ownerId, ownerId), eq(notes.archived, false)];
+      if (input.search) {
+        const search = `%${escapeLike(input.search)}%`;
+        const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
+        if (searchCondition) conditions.push(searchCondition);
+      }
       if (input.tagId) {
         return db
           .select({

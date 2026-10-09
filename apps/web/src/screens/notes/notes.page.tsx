@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createNoteInput,
+  listNotesInput,
   NOTE_BODY_MAX,
   NOTE_TITLE_MAX,
 } from "../../../../api/src/modules/notes/notes.types";
@@ -15,6 +16,8 @@ export function NotesPage({ email }: Props) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
   const [selectedTagId, setSelectedTagId] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
@@ -24,19 +27,25 @@ export function NotesPage({ email }: Props) {
   const [archivedView, setArchivedView] = useState(false);
   const latestLoad = useRef(0);
 
-  const loadNotes = useCallback(async () => {
-    const requestId = ++latestLoad.current;
-    try {
-      const loadedNotes = await trpc.notes.list(selectedTagId ? { tagId: selectedTagId } : {});
-      if (requestId === latestLoad.current) setNotes(loadedNotes);
-    } catch (cause) {
-      if (requestId === latestLoad.current) {
-        setError(cause instanceof Error ? cause.message : "Unable to load notes");
+  const loadNotes = useCallback(
+    async (searchOverride = search) => {
+      const requestId = ++latestLoad.current;
+      try {
+        const loadedNotes = await trpc.notes.list({
+          ...(selectedTagId ? { tagId: selectedTagId } : {}),
+          ...(searchOverride ? { search: searchOverride } : {}),
+        });
+        if (requestId === latestLoad.current) setNotes(loadedNotes);
+      } catch (cause) {
+        if (requestId === latestLoad.current) {
+          setError(cause instanceof Error ? cause.message : "Unable to load notes");
+        }
+      } finally {
+        if (requestId === latestLoad.current) setLoading(false);
       }
-    } finally {
-      if (requestId === latestLoad.current) setLoading(false);
-    }
-  }, [selectedTagId]);
+    },
+    [search, selectedTagId],
+  );
 
   useEffect(() => {
     void loadNotes();
@@ -67,6 +76,21 @@ export function NotesPage({ email }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function submitSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    const parsed = listNotesInput.safeParse({
+      tagId: selectedTagId || undefined,
+      search: searchDraft || undefined,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid search");
+      return;
+    }
+    const nextSearch = parsed.data.search ?? "";
+    setSearch(nextSearch);
   }
 
   if (archivedView) return <ArchivedPage onBack={() => setArchivedView(false)} />;
@@ -109,6 +133,16 @@ export function NotesPage({ email }: Props) {
       {error && <p role="alert">{error}</p>}
       <section aria-labelledby="main-list-heading">
         <h2 id="main-list-heading">Your notes</h2>
+        <form onSubmit={submitSearch}>
+          <label htmlFor="note-search">Search notes</label>
+          <input
+            id="note-search"
+            name="search"
+            value={searchDraft}
+            onChange={(event) => setSearchDraft(event.target.value)}
+          />
+          <button type="submit">Search</button>
+        </form>
         <label htmlFor="note-tag-filter">Filter by tag</label>
         <select
           id="note-tag-filter"
