@@ -8,10 +8,21 @@ import { trpc } from "../../lib/trpc";
 
 type Props = { id: string };
 
+function normalizeTagDraft(value: string) {
+  return [
+    ...new Set(
+      value
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ].join(", ");
+}
+
 export function NotePage({ id }: Props) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [original, setOriginal] = useState({ title: "", body: "" });
+  const [original, setOriginal] = useState({ title: "", body: "", tags: "" });
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
@@ -33,8 +44,9 @@ export function NotePage({ id }: Props) {
         if (!active) return;
         setTitle(note.title);
         setBody(note.body ?? "");
-        setOriginal({ title: note.title, body: note.body ?? "" });
-        setTags(note.tags?.join(", ") ?? "");
+        const normalizedTags = (note.tags ?? []).join(", ");
+        setOriginal({ title: note.title, body: note.body ?? "", tags: normalizedTags });
+        setTags(normalizedTags);
         setPinned(note.pinned);
         setArchived(note.archived);
         setLoaded(true);
@@ -78,8 +90,9 @@ export function NotePage({ id }: Props) {
       const note = await trpc.notes.update({ ...parsed.data, tags });
       setTitle(note.title);
       setBody(note.body ?? "");
-      setOriginal({ title: note.title, body: note.body ?? "" });
-      setTags(parsed.data.tags.join(", "));
+      const normalizedTags = parsed.data.tags.join(", ");
+      setOriginal({ title: note.title, body: note.body ?? "", tags: normalizedTags });
+      setTags(normalizedTags);
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save note");
@@ -127,7 +140,8 @@ export function NotePage({ id }: Props) {
     }
   }
 
-  const dirty = title !== original.title || body !== original.body;
+  const dirty =
+    title !== original.title || body !== original.body || normalizeTagDraft(tags) !== original.tags;
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>

@@ -20,6 +20,7 @@ export function NotesPage({ email }: Props) {
   const [search, setSearch] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [tagDraft, setTagDraft] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
@@ -67,17 +68,22 @@ export function NotesPage({ email }: Props) {
     event.preventDefault();
     setError("");
     setStatus("");
-    const parsed = createNoteInput.safeParse({ title, body: body || undefined });
+    const parsed = createNoteInput.safeParse({
+      title,
+      body: body || undefined,
+      tags: tagDraft,
+    });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid note");
       return;
     }
     setSaving(true);
     try {
-      await trpc.notes.create(parsed.data);
+      await trpc.notes.create({ ...parsed.data, tags: tagDraft });
       await loadNotes();
       setTitle("");
       setBody("");
+      setTagDraft("");
       setStatus("Note saved");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save note");
@@ -124,6 +130,14 @@ export function NotesPage({ email }: Props) {
             maxLength={NOTE_TITLE_MAX}
             required
             onChange={(event) => setTitle(event.target.value)}
+            style={{ display: "block", maxWidth: "100%", width: "100%" }}
+          />
+          <label htmlFor="note-tags">Tags</label>
+          <input
+            id="note-tags"
+            name="tags"
+            value={tagDraft}
+            onChange={(event) => setTagDraft(event.target.value)}
             style={{ display: "block", maxWidth: "100%", width: "100%" }}
           />
           <label htmlFor="note-body">Body</label>
@@ -177,6 +191,7 @@ export function NotesPage({ email }: Props) {
                   <a href={`/notes/${encodeURIComponent(note.id)}`}>{note.title}</a>
                 </h3>
                 {note.body && <p style={{ whiteSpace: "pre-wrap" }}>{note.body}</p>}
+                {note.tags && note.tags.length > 0 && <p>Tags: {note.tags.join(", ")}</p>}
               </article>
             </li>
           ))}
