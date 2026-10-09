@@ -22,3 +22,6 @@ export const notFound = (what: string) => new AppError("NOT_FOUND", `${what} not
 export const conflict = (message: string) => new AppError("CONFLICT", message);
 
 export const badRequest = (message: string) => new AppError("BAD_REQUEST", message);
+
+export const unauthorized = (message = "invalid email or password") =>
+  new AppError("UNAUTHORIZED", message);

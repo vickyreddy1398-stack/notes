@@ -20,6 +20,7 @@ async function call<T>(path: string, input?: unknown): Promise<T> {
 export const trpc = {
   users: {
     signUp: (input: { email: string; password: string }) => call<User>("users.signUp", input),
+    signIn: (input: { email: string; password: string }) => call<User>("users.signIn", input),
     currentUser: () => call<User>("users.currentUser"),
   },
   notes: {
