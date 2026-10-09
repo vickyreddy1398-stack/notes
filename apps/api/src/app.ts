@@ -9,6 +9,9 @@ export function createApp() {
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());
-  app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext: () => ({ userId: null }) }));
+  app.use(
+    "/api/trpc",
+    createExpressMiddleware({ router: appRouter, createContext: () => ({ userId: null }) }),
+  );
   return app;
 }
