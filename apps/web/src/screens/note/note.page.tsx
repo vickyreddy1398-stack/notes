@@ -11,6 +11,8 @@ type Props = { id: string };
 export function NotePage({ id }: Props) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [original, setOriginal] = useState({ title: "", body: "" });
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
@@ -31,6 +33,7 @@ export function NotePage({ id }: Props) {
         if (!active) return;
         setTitle(note.title);
         setBody(note.body ?? "");
+        setOriginal({ title: note.title, body: note.body ?? "" });
         setTags(note.tags?.join(", ") ?? "");
         setPinned(note.pinned);
         setArchived(note.archived);
@@ -75,6 +78,7 @@ export function NotePage({ id }: Props) {
       const note = await trpc.notes.update({ ...parsed.data, tags });
       setTitle(note.title);
       setBody(note.body ?? "");
+      setOriginal({ title: note.title, body: note.body ?? "" });
       setTags(parsed.data.tags.join(", "));
       setSaved(true);
     } catch (cause) {
@@ -122,6 +126,8 @@ export function NotePage({ id }: Props) {
       setConfirmingDelete(false);
     }
   }
+
+  const dirty = title !== original.title || body !== original.body;
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
@@ -178,10 +184,29 @@ export function NotePage({ id }: Props) {
           style={{ display: "block", maxWidth: "100%", width: "100%" }}
         />
         <button type="submit">Save</button>
-        <a href="/" style={{ marginLeft: "0.75rem" }}>
+        <a
+          href="/"
+          onClick={(event) => {
+            if (dirty) {
+              event.preventDefault();
+              setConfirmingDiscard(true);
+            }
+          }}
+          style={{ marginLeft: "0.75rem" }}
+        >
           Cancel
         </a>
       </form>
+      {confirmingDiscard && (
+        <section aria-labelledby="discard-confirmation-heading">
+          <h2 id="discard-confirmation-heading">Discard changes</h2>
+          <p>Your unsaved changes will be lost.</p>
+          <a href="/">Discard changes</a>
+          <button type="button" onClick={() => setConfirmingDiscard(false)}>
+            Stay
+          </button>
+        </section>
+      )}
       {!confirmingDelete ? (
         <button type="button" onClick={() => setConfirmingDelete(true)}>
           Delete

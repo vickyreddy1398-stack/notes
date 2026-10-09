@@ -101,6 +101,78 @@ describe("NotePage", () => {
     expect(screen.getByRole("button", { name: "Pin" })).toBeInTheDocument();
   });
 
+  it("leaves immediately on clean Cancel without updating", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
+      response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+      }) as Promise<Response>,
+    );
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/");
+    fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    expect(screen.queryByRole("heading", { name: "Discard changes" })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks before leaving dirty title or body edits and can stay", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
+      response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+      }) as Promise<Response>,
+    );
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Changed title" } });
+    fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    expect(screen.getByRole("heading", { name: "Discard changes" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+    expect(screen.queryByRole("heading", { name: "Discard changes" })).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Changed title")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("discards dirty edits without updating the stored note", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
+      response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+      }) as Promise<Response>,
+    );
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Body"), { target: { value: "Changed body" } });
+    fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("link", { name: "Discard changes" }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the saved title and body as the new clean baseline", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const path = String(input);
+      return response(
+        path.includes("notes.update") && init?.method === "POST"
+          ? { id: "note-1", title: "Saved title", body: "Saved body" }
+          : { id: "note-1", title: "Private title", body: "Private body" },
+      ) as Promise<Response>;
+    });
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Saved title" } });
+    fireEvent.change(screen.getByLabelText("Body"), { target: { value: "Saved body" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Changes saved"));
+    fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    expect(screen.queryByRole("heading", { name: "Discard changes" })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("loads a note into editable fields with Save and Cancel", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
       response({
