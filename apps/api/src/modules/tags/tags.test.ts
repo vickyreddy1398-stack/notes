@@ -101,15 +101,23 @@ describe("tag persistence", () => {
       .returning();
     const active = await notes.create(owner.id, { title: "Active" });
     const archived = await notes.create(owner.id, { title: "Archived" });
+    const otherActive = await notes.create(other.id, { title: "Other active" });
     await db.update(notesTable).set({ archived: true }).where(eq(notesTable.id, archived.id));
     await db.insert(noteTags).values([
       { noteId: active.id, tagId: used.id },
       { noteId: archived.id, tagId: otherTag.id },
+      { noteId: otherActive.id, tagId: otherTag.id },
     ]);
 
     expect(await callerFactory({ db, userId: owner.id }).list()).toEqual([
       { id: used.id, name: "work" },
     ]);
+    expect(await callerFactory({ db, userId: other.id }).list()).toEqual([
+      { id: otherTag.id, name: "work" },
+    ]);
+    await expect(callerFactory({ db, userId: null }).list()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("rejects associations and tags that reference missing rows", async () => {

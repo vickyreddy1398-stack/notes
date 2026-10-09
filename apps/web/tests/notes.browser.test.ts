@@ -147,6 +147,58 @@ test("keeps search and tag filtering independent and keeps archived unfiltered",
   await expect(page.getByLabel("Search notes")).toHaveValue("");
 });
 
+test("removes unused tags after replacing tags and permanently deleting a note", async ({
+  page,
+}) => {
+  await signUp(page);
+
+  async function createNote(title: string) {
+    await page.getByLabel("Title").fill(title);
+    await page.getByRole("button", { name: "Save note" }).click();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  }
+
+  await createNote("First tagged note");
+  await page.getByRole("link", { name: "First tagged note" }).click();
+  await expect(page.getByRole("heading", { name: "Edit note" })).toBeVisible();
+  await page.getByLabel("Tags").fill("orphan, shared");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Changes saved.");
+  await page.getByRole("link", { name: "Cancel" }).click();
+
+  await createNote("Second tagged note");
+  await page.getByRole("link", { name: "Second tagged note" }).click();
+  await page.getByLabel("Tags").fill("shared");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Changes saved.");
+  await page.getByRole("link", { name: "Cancel" }).click();
+  await page.reload();
+  await expect(page.getByLabel("Filter by tag")).toContainText("orphan");
+  await expect(page.getByLabel("Filter by tag")).toContainText("shared");
+
+  await page.getByRole("link", { name: "First tagged note" }).click();
+  await page.getByLabel("Tags").fill("shared");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Changes saved.");
+  await page.getByRole("link", { name: "Cancel" }).click();
+  await page.reload();
+  await expect(page.getByLabel("Filter by tag")).not.toContainText("orphan");
+  await expect(page.getByLabel("Filter by tag")).toContainText("shared");
+
+  await createNote("Delete-only tagged note");
+  await page.getByRole("link", { name: "Delete-only tagged note" }).click();
+  await page.getByLabel("Tags").fill("delete-only");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Changes saved.");
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("heading", { name: "Delete confirmation" })).toBeVisible();
+  await page.getByRole("button", { name: "Confirm Delete" }).click();
+  await expect(page).toHaveURL("/");
+  await page.reload();
+  await expect(page.getByLabel("Filter by tag")).not.toContainText("delete-only");
+  await expect(page.getByLabel("Filter by tag")).toContainText("shared");
+});
+
 test("renders active notes in the required order", async ({ page }) => {
   await signUp(page);
 

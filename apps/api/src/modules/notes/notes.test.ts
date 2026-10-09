@@ -601,16 +601,27 @@ describe("notes", () => {
     const ownerCaller = callerFactory({ db, userId: owner.user.id });
     const otherCaller = callerFactory({ db, userId: other.user.id });
     const note = await ownerCaller.create({ title: "Tagged" });
+    const sharedNote = await ownerCaller.create({ title: "Shared tagged" });
     const saved = await ownerCaller.update({
       id: note.id,
       title: "Tagged",
       body: "",
       tags: " Work, work,  PERSONAL , , ",
     });
+    await ownerCaller.update({
+      id: sharedNote.id,
+      title: "Shared tagged",
+      body: "",
+      tags: "work",
+    });
     expect(saved.id).toBe(note.id);
     expect(await ownerCaller.get({ id: note.id })).toMatchObject({ tags: ["work", "personal"] });
     const ownerTags = await db.select().from(tags).where(eq(tags.ownerId, owner.user.id));
     expect(ownerTags.map((tag) => tag.name).sort()).toEqual(["personal", "work"]);
+
+    await ownerCaller.update({ id: note.id, title: "Tagged", body: "", tags: "work" });
+    const filterTags = await createCallerFactory(tagsRouter)({ db, userId: owner.user.id }).list();
+    expect(filterTags.map((tag) => tag.name)).toEqual(["work"]);
     await expect(
       otherCaller.update({ id: note.id, title: "Nope", body: "", tags: "private" }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
