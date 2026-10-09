@@ -161,6 +161,78 @@ describe("notes", () => {
     );
   });
 
+  it("lists archived notes for the owner in updated-first order", async () => {
+    const owner = await users.signUp({
+      email: `archived-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `archived-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const createdAt = new Date("2025-01-01T00:00:00.000Z");
+    await db.insert(notes).values([
+      {
+        id: "archived-old",
+        ownerId: owner.user.id,
+        title: "Old",
+        archived: true,
+        createdAt,
+        updatedAt: new Date("2025-01-02T00:00:00.000Z"),
+      },
+      {
+        id: "archived-new",
+        ownerId: owner.user.id,
+        title: "New",
+        archived: true,
+        createdAt,
+        updatedAt: new Date("2025-01-03T00:00:00.000Z"),
+      },
+      {
+        id: "active",
+        ownerId: owner.user.id,
+        title: "Active",
+        archived: false,
+        createdAt,
+        updatedAt: new Date("2025-01-04T00:00:00.000Z"),
+      },
+      {
+        id: "archived-other",
+        ownerId: other.user.id,
+        title: "Other",
+        archived: true,
+        createdAt,
+        updatedAt: new Date("2025-01-05T00:00:00.000Z"),
+      },
+    ]);
+
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    expect((await ownerCaller.archived()).map((note) => note.title)).toEqual(["New", "Old"]);
+    expect(await callerFactory({ db, userId: other.user.id }).archived()).toHaveLength(1);
+  });
+
+  it("restores only the owner's archived note and hides other or missing notes", async () => {
+    const owner = await users.signUp({
+      email: `restore-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `restore-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    await db.insert(notes).values([
+      { id: "restore-owned", ownerId: owner.user.id, title: "Owned", archived: true },
+      { id: "restore-other", ownerId: other.user.id, title: "Other", archived: true },
+    ]);
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    await expect(ownerCaller.restore({ id: "restore-other" })).rejects.toThrow("note not found");
+    await expect(ownerCaller.restore({ id: "missing-note" })).rejects.toThrow("note not found");
+    await ownerCaller.restore({ id: "restore-owned" });
+    expect((await ownerCaller.archived()).map((note) => note.id)).not.toContain("restore-owned");
+
+    await expect(callerFactory({ db, userId: null }).archived()).rejects.toThrow();
+  });
+
   it("rejects unauthenticated creation", async () => {
     await expect(callerFactory({ db, userId: null }).create({ title: "no" })).rejects.toThrow();
   });
