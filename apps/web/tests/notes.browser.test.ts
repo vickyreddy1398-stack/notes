@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { db } from "../../api/src/db";
 import { notes, noteTags, tags } from "../../api/src/db/schema";
+import { createNotesService } from "../../api/src/modules/notes/notes.service";
 import { createUsersService } from "../../api/src/modules/users/users.service";
 
 async function signUp(page: import("@playwright/test").Page) {
@@ -10,6 +11,37 @@ async function signUp(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
 }
+
+test("shows a create-first-note hint for empty active, search, and tag results", async ({
+  page,
+}) => {
+  await signUp(page);
+  const hint = page.getByText("Create your first note to get started.");
+  await expect(hint).toBeVisible();
+
+  await page.getByLabel("Search notes").fill("missing");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(hint).toBeVisible();
+
+  const ownerId = await page.evaluate(async () => {
+    const response = await fetch("http://127.0.0.1:3001/api/trpc/users.currentUser", {
+      credentials: "include",
+    });
+    return ((await response.json()) as { result: { data: { id: string } } }).result.data.id;
+  });
+  const [tag] = await db
+    .insert(tags)
+    .values({ id: `browser-empty-tag-${ownerId}-${Date.now()}`, ownerId, name: "Empty" })
+    .returning();
+  const temporaryNoteId = `browser-empty-tag-note-${ownerId}-${Date.now()}`;
+  await db.insert(notes).values({ id: temporaryNoteId, ownerId, title: "Temporary" });
+  await db.insert(noteTags).values({ noteId: temporaryNoteId, tagId: tag.id });
+  await page.reload();
+  await expect(page.getByLabel("Filter by tag")).toContainText("Empty");
+  await createNotesService(db).archive(ownerId, temporaryNoteId);
+  await page.getByLabel("Filter by tag").selectOption(tag.id);
+  await expect(hint).toBeVisible();
+});
 
 test("searches only matching active notes owned by the signed-in user", async ({ page }) => {
   await signUp(page);

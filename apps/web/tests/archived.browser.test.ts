@@ -108,7 +108,5 @@ test("restores an archived note and removes it from the view", async ({ page }) 
 test("shows a create-first-note hint when there are no archived notes", async ({ page }) => {
   await signUp(page);
   await openArchived(page);
-  await expect(
-    page.getByText("Create your first note to see it here when archived."),
-  ).toBeVisible();
+  await expect(page.getByText("Create your first note to get started.")).toBeVisible();
 });

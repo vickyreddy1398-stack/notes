@@ -42,9 +42,7 @@ export function ArchivedPage({ onBack }: Props) {
       <h1>Archived</h1>
       {loading && <p>Loading archived notes…</p>}
       {error && <p role="alert">{error}</p>}
-      {!loading && notes.length === 0 && (
-        <p>Create your first note to see it here when archived.</p>
-      )}
+      {!loading && notes.length === 0 && <p>Create your first note to get started.</p>}
       <ol>
         {notes.map((note) => (
           <li key={note.id}>
