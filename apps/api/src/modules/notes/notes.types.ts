@@ -46,7 +46,10 @@ export const updateNoteInput = z
   .strict();
 export type UpdateNoteInput = z.infer<typeof updateNoteInput>;
 
-export const listNotesInput = z
-  .object({ tagId: z.string().optional(), search: z.string().optional() })
-  .strict();
+const unfilteredNotesInput = z.object({}).strict();
+const searchedNotesInput = z.object({ search: z.string().min(1) }).strict();
+const taggedNotesInput = z.object({ tagId: z.string().min(1) }).strict();
+
+/** Exactly one active-list mode: all notes, a text search, or one tag. */
+export const listNotesInput = z.union([unfilteredNotesInput, searchedNotesInput, taggedNotesInput]);
 export type ListNotesInput = z.infer<typeof listNotesInput>;

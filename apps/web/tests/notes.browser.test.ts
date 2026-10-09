@@ -52,7 +52,7 @@ test("searches only matching active notes owned by the signed-in user", async ({
   await expect(list).not.toContainText("Completely unrelated");
 });
 
-test("combines active search with one available tag and keeps archived unfiltered", async ({
+test("keeps search and tag filtering independent and keeps archived unfiltered", async ({
   page,
 }) => {
   await signUp(page);
@@ -100,20 +100,19 @@ test("combines active search with one available tag and keeps archived unfiltere
   await page.getByRole("button", { name: "Search" }).click();
   await expect(list).toContainText("Tagged note");
   await expect(list).not.toContainText("Other active note");
-  await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
+  await expect(page.getByLabel("Filter by tag")).toHaveValue("");
   await expect(page.getByLabel("Search notes")).toHaveValue("Tagged");
 
-  await page.getByLabel("Filter by tag").selectOption("");
   await page.getByLabel("Filter by tag").selectOption(tag.id);
   await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
-  await expect(page.getByLabel("Search notes")).toHaveValue("Tagged");
+  await expect(page.getByLabel("Search notes")).toHaveValue("");
 
   await page.getByRole("button", { name: "Archived" }).click();
   await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible();
   await expect(page.getByText("Archived tagged note")).toBeVisible();
   await page.getByRole("button", { name: "Notes" }).click();
   await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
-  await expect(page.getByLabel("Search notes")).toHaveValue("Tagged");
+  await expect(page.getByLabel("Search notes")).toHaveValue("");
 });
 
 test("renders active notes in the required order", async ({ page }) => {

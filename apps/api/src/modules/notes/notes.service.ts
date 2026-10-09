@@ -29,17 +29,13 @@ export function createNotesService(db: Db) {
         desc(notes.id),
       ] as const;
 
-      if (input.tagId) {
-        const tagConditions = [
-          ...activeOwnerConditions,
-          eq(noteTags.tagId, input.tagId),
-          eq(tags.ownerId, ownerId),
-        ];
-        if (input.search) {
-          const search = `%${escapeLike(input.search)}%`;
-          const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
-          if (searchCondition) tagConditions.push(searchCondition);
-        }
+      if ("tagId" in input) {
+        const [ownedTag] = await db
+          .select({ id: tags.id })
+          .from(tags)
+          .where(and(eq(tags.id, input.tagId), eq(tags.ownerId, ownerId)));
+        if (!ownedTag) throw notFound("tag");
+
         return db
           .select({
             id: notes.id,
@@ -53,13 +49,12 @@ export function createNotesService(db: Db) {
           })
           .from(notes)
           .innerJoin(noteTags, eq(noteTags.noteId, notes.id))
-          .innerJoin(tags, eq(tags.id, noteTags.tagId))
-          .where(and(...tagConditions))
+          .where(and(...activeOwnerConditions, eq(noteTags.tagId, ownedTag.id)))
           .orderBy(...order);
       }
 
       const conditions = [...activeOwnerConditions];
-      if (input.search) {
+      if ("search" in input) {
         const search = `%${escapeLike(input.search)}%`;
         const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
         if (searchCondition) conditions.push(searchCondition);
