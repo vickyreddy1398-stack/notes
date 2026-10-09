@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const notes = pgTable("Note", {
@@ -8,6 +8,8 @@ export const notes = pgTable("Note", {
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   body: text("body"),
+  pinned: boolean("pinned").notNull().default(false),
+  archived: boolean("archived").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

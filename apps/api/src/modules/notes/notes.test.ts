@@ -24,7 +24,7 @@ beforeAll(async () => {
 });
 
 describe("notes", () => {
-  it("persists a note with owner and timestamps", async () => {
+  it("persists a note with owner, active status, and timestamps", async () => {
     const { user } = await users.signUp({
       email: `note-${Date.now()}@example.com`,
       password: "password123",
@@ -32,7 +32,14 @@ describe("notes", () => {
     const note = callerFactory({ db, userId: user.id });
     const created = await note.create({ title: "A title" });
     const [row] = await db.select().from(notes).where(eq(notes.id, created.id));
-    expect(row).toMatchObject({ id: created.id, title: "A title", body: null, ownerId: user.id });
+    expect(row).toMatchObject({
+      id: created.id,
+      title: "A title",
+      body: null,
+      ownerId: user.id,
+      pinned: false,
+      archived: false,
+    });
     expect(row.createdAt).toBeInstanceOf(Date);
     expect(row.updatedAt).toBeInstanceOf(Date);
   });
@@ -51,7 +58,7 @@ describe("notes", () => {
     await expect(caller.create({ title: "ok", body: "x".repeat(10001) })).rejects.toThrow();
   });
 
-  it("lists only the owner's notes in newest-first order", async () => {
+  it("lists only active owner notes, pinned first, then updated and created newest-first", async () => {
     const first = await users.signUp({
       email: `list-owner-${Date.now()}@example.com`,
       password: "password123",
@@ -60,34 +67,58 @@ describe("notes", () => {
       email: `list-other-${Date.now()}@example.com`,
       password: "password123",
     });
-    const older = new Date("2025-01-01T00:00:00.000Z");
+    const oldest = new Date("2025-01-01T00:00:00.000Z");
     const newer = new Date("2025-01-02T00:00:00.000Z");
+    const newest = new Date("2025-01-03T00:00:00.000Z");
     await db.insert(notes).values([
       {
-        id: "list-older",
+        id: "list-pinned-old",
         ownerId: first.user.id,
-        title: "Older",
-        createdAt: older,
-        updatedAt: older,
+        title: "Pinned",
+        pinned: true,
+        createdAt: oldest,
+        updatedAt: oldest,
       },
       {
-        id: "list-newer",
+        id: "list-updated",
         ownerId: first.user.id,
-        title: "Newer",
-        createdAt: newer,
+        title: "Updated",
+        createdAt: oldest,
+        updatedAt: newest,
+      },
+      {
+        id: "list-tie-old",
+        ownerId: first.user.id,
+        title: "Tie old",
+        createdAt: oldest,
         updatedAt: newer,
+      },
+      {
+        id: "list-tie-new",
+        ownerId: first.user.id,
+        title: "Tie new",
+        createdAt: newest,
+        updatedAt: newer,
+      },
+      {
+        id: "list-archived",
+        ownerId: first.user.id,
+        title: "Archived",
+        archived: true,
+        createdAt: newest,
+        updatedAt: newest,
       },
       {
         id: "list-other",
         ownerId: other.user.id,
         title: "Other user",
-        createdAt: newer,
-        updatedAt: newer,
+        createdAt: newest,
+        updatedAt: newest,
       },
     ]);
 
     const result = await callerFactory({ db, userId: first.user.id }).list();
-    expect(result.map((note) => note.title)).toEqual(["Newer", "Older"]);
+    expect(result.map((note) => note.title)).toEqual(["Pinned", "Updated", "Tie new", "Tie old"]);
     expect(await callerFactory({ db, userId: other.user.id }).list()).toHaveLength(1);
   });
 

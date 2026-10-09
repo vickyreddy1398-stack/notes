@@ -11,8 +11,8 @@ export function createNotesService(db: Db) {
       return db
         .select()
         .from(notes)
-        .where(eq(notes.ownerId, ownerId))
-        .orderBy(desc(notes.createdAt), desc(notes.id));
+        .where(and(eq(notes.ownerId, ownerId), eq(notes.archived, false)))
+        .orderBy(desc(notes.pinned), desc(notes.updatedAt), desc(notes.createdAt), desc(notes.id));
     },
 
     async getOwned(ownerId: string, id: string) {
