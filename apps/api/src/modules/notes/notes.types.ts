@@ -21,5 +21,7 @@ export type GetNoteInput = z.infer<typeof getNoteInput>;
 export const noteIdInput = z.object({ id: z.string().min(1) }).strict();
 export type NoteIdInput = z.infer<typeof noteIdInput>;
 
-export const listNotesInput = z.object({ tagId: z.string().optional() }).strict();
+export const listNotesInput = z
+  .object({ tagId: z.string().optional(), search: z.string().optional() })
+  .strict();
 export type ListNotesInput = z.infer<typeof listNotesInput>;

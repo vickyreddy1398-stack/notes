@@ -125,6 +125,47 @@ describe("notes", () => {
     expect(await callerFactory({ db, userId: other.user.id }).list()).toHaveLength(1);
   });
 
+  it("searches active owner notes by case-insensitive title or body substring", async () => {
+    const owner = await users.signUp({
+      email: `search-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `search-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    await db.insert(notes).values([
+      { id: `search-title-${owner.user.id}`, ownerId: owner.user.id, title: "Quarterly PLAN" },
+      {
+        id: `search-body-${owner.user.id}`,
+        ownerId: owner.user.id,
+        title: "Unrelated title",
+        body: "The planning notes are here",
+      },
+      {
+        id: `search-archived-${owner.user.id}`,
+        ownerId: owner.user.id,
+        title: "Quarterly archived plan",
+        archived: true,
+      },
+      { id: `search-other-${other.user.id}`, ownerId: other.user.id, title: "Quarterly plan" },
+      { id: `search-wildcard-${owner.user.id}`, ownerId: owner.user.id, title: "%_\\" },
+    ]);
+
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    const matching = await ownerCaller.list({ search: "PlAn" });
+    expect(matching.map((note) => note.id).sort()).toEqual(
+      [`search-body-${owner.user.id}`, `search-title-${owner.user.id}`].sort(),
+    );
+    expect(await ownerCaller.list({ search: "does not exist" })).toEqual([]);
+    expect(await callerFactory({ db, userId: other.user.id }).list({ search: "plan" })).toEqual([
+      expect.objectContaining({ id: `search-other-${other.user.id}` }),
+    ]);
+    expect((await ownerCaller.list({ search: "%_\\" })).map((note) => note.id)).toEqual([
+      `search-wildcard-${owner.user.id}`,
+    ]);
+  });
+
   it("retrieves notes only for their owner", async () => {
     const { user: ownerA } = await users.signUp({
       email: `retrieve-a-${Date.now()}@example.com`,

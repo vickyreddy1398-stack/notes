@@ -29,7 +29,8 @@ export const trpc = {
     currentUser: () => call<User>("users.currentUser"),
   },
   notes: {
-    list: (input: { tagId?: string } = {}) => call<Note[]>("notes.list", input, "GET"),
+    list: (input: { tagId?: string; search?: string } = {}) =>
+      call<Note[]>("notes.list", input, "GET"),
     archived: () => call<Note[]>("notes.archived"),
     restore: (input: { id: string }) => call<Note>("notes.restore", input),
     delete: (input: { id: string }) => call<Note>("notes.delete", input),

@@ -60,6 +60,35 @@ describe("NotesPage", () => {
     );
   });
 
+  it("submits a search and renders the filtered active notes", async () => {
+    const matching = {
+      id: "matching",
+      title: "Planning",
+      body: "Searchable body",
+      pinned: false,
+      archived: false,
+      createdAt: "2025-01-02T00:00:00.000Z",
+      updatedAt: "2025-01-02T00:00:00.000Z",
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(response([]) as Promise<Response>)
+      .mockReturnValueOnce(response([]) as Promise<Response>)
+      .mockReturnValueOnce(response([matching]) as Promise<Response>);
+    render(<NotesPage email="person@example.com" />);
+    await waitFor(() => expect(screen.getByText("No notes yet.")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Search notes"), { target: { value: "plan" } });
+    const searchForm = screen.getByRole("button", { name: "Search" }).closest("form");
+    if (!searchForm) throw new Error("Search form not found");
+    fireEvent.submit(searchForm);
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Planning" })).toBeInTheDocument(),
+    );
+    expect(fetchMock.mock.calls[2]?.[0]).toContain(
+      encodeURIComponent(JSON.stringify({ search: "plan" })),
+    );
+  });
+
   it("reloads and renders the saved note after explicit Save", async () => {
     const saved = {
       id: "note-1",
