@@ -11,6 +11,8 @@ type Props = { id: string };
 export function NotePage({ id }: Props) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [pinned, setPinned] = useState(false);
+  const [pinning, setPinning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +28,7 @@ export function NotePage({ id }: Props) {
         if (!active) return;
         setTitle(note.title);
         setBody(note.body ?? "");
+        setPinned(note.pinned);
         setLoaded(true);
       })
       .catch((cause) => {
@@ -73,6 +76,19 @@ export function NotePage({ id }: Props) {
     }
   }
 
+  async function changePin(nextPinned: boolean) {
+    setPinning(true);
+    setError("");
+    try {
+      const note = nextPinned ? await trpc.notes.pin({ id }) : await trpc.notes.unpin({ id });
+      setPinned(note.pinned);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to change pin state");
+    } finally {
+      setPinning(false);
+    }
+  }
+
   async function deleteNote() {
     setDeleting(true);
     setError("");
@@ -90,6 +106,11 @@ export function NotePage({ id }: Props) {
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
       <h1>Edit note</h1>
       {error && <p role="alert">{error}</p>}
+      <p>
+        <button type="button" onClick={() => void changePin(!pinned)} disabled={pinning}>
+          {pinning ? "Saving…" : pinned ? "Unpin" : "Pin"}
+        </button>
+      </p>
       <form
         onSubmit={(event) => {
           event.preventDefault();

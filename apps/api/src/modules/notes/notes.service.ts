@@ -75,6 +75,26 @@ export function createNotesService(db: Db) {
         .orderBy(desc(notes.updatedAt), desc(notes.createdAt), desc(notes.id));
     },
 
+    async pin(ownerId: string, id: string) {
+      const [note] = await db
+        .update(notes)
+        .set({ pinned: true })
+        .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId)))
+        .returning();
+      if (!note) throw notFound("note");
+      return note;
+    },
+
+    async unpin(ownerId: string, id: string) {
+      const [note] = await db
+        .update(notes)
+        .set({ pinned: false })
+        .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId)))
+        .returning();
+      if (!note) throw notFound("note");
+      return note;
+    },
+
     async delete(ownerId: string, id: string) {
       const [note] = await db
         .delete(notes)
