@@ -391,23 +391,36 @@ describe("notes", () => {
     });
   });
 
-  it("rejects combining search and tag filtering", async () => {
+  it("allows independent and combined search and tag filters", async () => {
     const { user } = await users.signUp({
       email: `filter-input-${Date.now()}@example.com`,
       password: "password123",
     });
-    await expect(
-      callerFactory({ db, userId: user.id }).list({ tagId: "tag", search: "text" }),
-    ).rejects.toThrow();
-    await expect(callerFactory({ db, userId: user.id }).list({ tagId: "tag" })).resolves.toEqual(
-      [],
+    const [tag] = await db
+      .insert(tags)
+      .values({ id: `filter-input-tag-${user.id}`, ownerId: user.id, name: "work" })
+      .returning();
+    await db.insert(notes).values([
+      { id: `filter-input-match-${user.id}`, ownerId: user.id, title: "Project work" },
+      { id: `filter-input-tag-only-${user.id}`, ownerId: user.id, title: "Unrelated" },
+      { id: `filter-input-search-only-${user.id}`, ownerId: user.id, title: "Project elsewhere" },
+    ]);
+    await db.insert(noteTags).values([
+      { noteId: `filter-input-match-${user.id}`, tagId: tag.id },
+      { noteId: `filter-input-tag-only-${user.id}`, tagId: tag.id },
+    ]);
+
+    const caller = callerFactory({ db, userId: user.id });
+    await expect(caller.list({ tagId: tag.id })).resolves.toHaveLength(2);
+    await expect(caller.list({ search: "project" })).resolves.toHaveLength(2);
+    await expect(caller.list({ tagId: tag.id, search: "project" })).resolves.toMatchObject([
+      { id: `filter-input-match-${user.id}` },
+    ]);
+    await expect(callerFactory({ db, userId: null }).list({ tagId: tag.id })).rejects.toMatchObject(
+      {
+        code: "UNAUTHORIZED",
+      },
     );
-    await expect(callerFactory({ db, userId: user.id }).list({ search: "text" })).resolves.toEqual(
-      [],
-    );
-    await expect(callerFactory({ db, userId: null }).list({ tagId: "tag" })).rejects.toMatchObject({
-      code: "UNAUTHORIZED",
-    });
   });
 
   it("filters to one owned tag and excludes archived notes while preserving order", async () => {

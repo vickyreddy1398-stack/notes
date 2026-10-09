@@ -86,13 +86,10 @@ export function NotesPage({ email }: Props) {
       setError(parsed.error.issues[0]?.message ?? "Invalid search");
       return;
     }
-    setSelectedTagId("");
     setSearch(parsed.data.search ?? "");
   }
 
   function selectTag(tagId: string) {
-    setSearchDraft("");
-    setSearch("");
     setSelectedTagId(tagId);
   }
 

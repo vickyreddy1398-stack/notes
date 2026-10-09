@@ -52,7 +52,9 @@ test("searches only matching active notes owned by the signed-in user", async ({
   await expect(list).not.toContainText("Completely unrelated");
 });
 
-test("filters active notes by one available tag without combining search", async ({ page }) => {
+test("combines active search with one available tag and keeps archived unfiltered", async ({
+  page,
+}) => {
   await signUp(page);
   const ownerId = await page.evaluate(async () => {
     const response = await fetch("http://127.0.0.1:3001/api/trpc/users.currentUser", {
@@ -94,15 +96,24 @@ test("filters active notes by one available tag without combining search", async
   await expect(list).not.toContainText("Archived tagged note");
   await expect(list).not.toContainText("Private tagged note");
 
-  await page.getByLabel("Search notes").fill("Other active");
+  await page.getByLabel("Search notes").fill("Tagged");
   await page.getByRole("button", { name: "Search" }).click();
-  await expect(list).toContainText("Other active note");
-  await expect(page.getByLabel("Filter by tag")).toHaveValue("");
-
-  await page.getByLabel("Filter by tag").selectOption(tag.id);
   await expect(list).toContainText("Tagged note");
   await expect(list).not.toContainText("Other active note");
-  await expect(page.getByLabel("Search notes")).toHaveValue("");
+  await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
+  await expect(page.getByLabel("Search notes")).toHaveValue("Tagged");
+
+  await page.getByLabel("Filter by tag").selectOption("");
+  await page.getByLabel("Filter by tag").selectOption(tag.id);
+  await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
+  await expect(page.getByLabel("Search notes")).toHaveValue("Tagged");
+
+  await page.getByRole("button", { name: "Archived" }).click();
+  await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible();
+  await expect(page.getByText("Archived tagged note")).toBeVisible();
+  await page.getByRole("button", { name: "Notes" }).click();
+  await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
+  await expect(page.getByLabel("Search notes")).toHaveValue("Tagged");
 });
 
 test("renders active notes in the required order", async ({ page }) => {
