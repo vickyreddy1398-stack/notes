@@ -13,8 +13,12 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("NotePage", () => {
   it("loads a note into editable fields with Save and Cancel", async () => {
-    vi.spyOn(globalThis, "fetch").mockReturnValue(
-      response({ id: "note-1", title: "Private title", body: "Private body" }) as Promise<Response>,
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
+      response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+      }) as Promise<Response>,
     );
     render(<NotePage id="note-1" />);
     expect(screen.getByText("Loading note…")).toBeInTheDocument();
@@ -25,8 +29,10 @@ describe("NotePage", () => {
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Changed" } });
     const form = screen.getByRole("button", { name: "Save" }).closest("form");
     if (!form) throw new Error("Editor form not found");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     fireEvent.submit(form);
-    expect(screen.getByRole("status")).toHaveTextContent("ready to save");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Changes saved"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("requires confirmation and cancellation leaves the note unchanged", async () => {

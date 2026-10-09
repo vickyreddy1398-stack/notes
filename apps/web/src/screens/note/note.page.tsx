@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { NOTE_BODY_MAX, NOTE_TITLE_MAX } from "../../../../api/src/modules/notes/notes.types";
+import {
+  NOTE_BODY_MAX,
+  NOTE_TITLE_MAX,
+  updateNoteInput,
+} from "../../../../api/src/modules/notes/notes.types";
 import { trpc } from "../../lib/trpc";
 
 type Props = { id: string };
@@ -51,6 +55,24 @@ export function NotePage({ id }: Props) {
     );
   }
 
+  async function saveNote() {
+    setError("");
+    setSaved(false);
+    const parsed = updateNoteInput.safeParse({ id, title, body });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid note");
+      return;
+    }
+    try {
+      const note = await trpc.notes.update(parsed.data);
+      setTitle(note.title);
+      setBody(note.body ?? "");
+      setSaved(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save note");
+    }
+  }
+
   async function deleteNote() {
     setDeleting(true);
     setError("");
@@ -71,7 +93,7 @@ export function NotePage({ id }: Props) {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          setSaved(true);
+          void saveNote();
         }}
       >
         <label htmlFor="note-editor-title">Title</label>
@@ -120,7 +142,7 @@ export function NotePage({ id }: Props) {
           </button>
         </section>
       )}
-      {saved && <p role="status">Changes are ready to save.</p>}
+      {saved && <p role="status">Changes saved.</p>}
     </main>
   );
 }

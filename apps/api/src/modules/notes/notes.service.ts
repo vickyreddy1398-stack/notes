@@ -3,7 +3,7 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import type { Db } from "../../db";
 import { notes, noteTags, tags } from "../../db/schema";
 import { notFound } from "../../lib/errors";
-import type { CreateNoteInput, ListNotesInput } from "./notes.types";
+import type { CreateNoteInput, ListNotesInput, UpdateNoteInput } from "./notes.types";
 
 function escapeLike(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
@@ -89,6 +89,16 @@ export function createNotesService(db: Db) {
         .update(notes)
         .set({ archived: false, updatedAt: new Date() })
         .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId), eq(notes.archived, true)))
+        .returning();
+      if (!note) throw notFound("note");
+      return note;
+    },
+
+    async update(ownerId: string, input: UpdateNoteInput) {
+      const [note] = await db
+        .update(notes)
+        .set({ title: input.title, body: input.body, updatedAt: new Date() })
+        .where(and(eq(notes.id, input.id), eq(notes.ownerId, ownerId)))
         .returning();
       if (!note) throw notFound("note");
       return note;
