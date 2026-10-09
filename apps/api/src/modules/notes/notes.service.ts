@@ -56,6 +56,15 @@ export function createNotesService(db: Db) {
         .orderBy(desc(notes.updatedAt), desc(notes.createdAt), desc(notes.id));
     },
 
+    async delete(ownerId: string, id: string) {
+      const [note] = await db
+        .delete(notes)
+        .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId)))
+        .returning();
+      if (!note) throw notFound("note");
+      return note;
+    },
+
     async restore(ownerId: string, id: string) {
       const [note] = await db
         .update(notes)

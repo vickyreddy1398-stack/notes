@@ -10,6 +10,9 @@ export const notesRouter = router({
     .input(getNoteInput)
     .query(({ ctx, input }) => createNotesService(ctx.db).getOwned(ctx.userId, input.id)),
   archived: protectedProcedure.query(({ ctx }) => createNotesService(ctx.db).archived(ctx.userId)),
+  delete: protectedProcedure
+    .input(noteIdInput)
+    .mutation(({ ctx, input }) => createNotesService(ctx.db).delete(ctx.userId, input.id)),
   restore: protectedProcedure
     .input(noteIdInput)
     .mutation(({ ctx, input }) => createNotesService(ctx.db).restore(ctx.userId, input.id)),
