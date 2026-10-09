@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "../../db";
 import { notes } from "../../db/schema";
+import { notFound } from "../../lib/errors";
 import type { CreateNoteInput } from "./notes.types";
 
 export function createNotesService(db: Db) {
@@ -12,6 +13,15 @@ export function createNotesService(db: Db) {
         .from(notes)
         .where(eq(notes.ownerId, ownerId))
         .orderBy(desc(notes.createdAt), desc(notes.id));
+    },
+
+    async getOwned(ownerId: string, id: string) {
+      const [note] = await db
+        .select()
+        .from(notes)
+        .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId)));
+      if (!note) throw notFound("note");
+      return note;
     },
 
     async create(ownerId: string, input: CreateNoteInput) {
