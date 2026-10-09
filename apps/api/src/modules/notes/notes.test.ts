@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "../../db";
 import { notes, noteTags, tags } from "../../db/schema";
 import { createCallerFactory } from "../../trpc/trpc";
+import { tagsRouter } from "../tags/tags.router";
 import { createUsersService } from "../users/users.service";
 import { notesRouter } from "./notes.router";
 
@@ -271,6 +272,58 @@ describe("notes", () => {
     expect((await caller.list({ tagId: work.id })).map((note) => note.title)).toEqual(["Tagged"]);
     expect((await caller.list()).map((note) => note.title)).not.toContain("Archived");
     expect(await caller.list({ tagId: unused.id })).toEqual([]);
+  });
+
+  it("permanently deletes an owned note, cascades associations, and removes unused filter tags", async () => {
+    const { user: owner } = await users.signUp({
+      email: `delete-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const [unusedTag, usedTag] = await db
+      .insert(tags)
+      .values([
+        { id: `delete-unused-${owner.id}`, ownerId: owner.id, name: "unused" },
+        { id: `delete-used-${owner.id}`, ownerId: owner.id, name: "used" },
+      ])
+      .returning();
+    const ownerCaller = callerFactory({ db, userId: owner.id });
+    const deleted = await ownerCaller.create({ title: "Delete me" });
+    const remaining = await ownerCaller.create({ title: "Keep me" });
+    await db.insert(noteTags).values([
+      { noteId: deleted.id, tagId: unusedTag.id },
+      { noteId: deleted.id, tagId: usedTag.id },
+      { noteId: remaining.id, tagId: usedTag.id },
+    ]);
+
+    await expect(ownerCaller.delete({ id: deleted.id })).resolves.toMatchObject({ id: deleted.id });
+    expect(await db.select().from(notes).where(eq(notes.id, deleted.id))).toEqual([]);
+    expect(await db.select().from(noteTags).where(eq(noteTags.noteId, deleted.id))).toEqual([]);
+    const filterTags = await createCallerFactory(tagsRouter)({ db, userId: owner.id }).list();
+    expect(filterTags.map((tag) => tag.name)).toEqual(["used"]);
+  });
+
+  it("only allows the owner to permanently delete and rejects unauthenticated callers", async () => {
+    const owner = await users.signUp({
+      email: `delete-auth-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `delete-auth-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    const otherCaller = callerFactory({ db, userId: other.user.id });
+    const note = await ownerCaller.create({ title: "Private delete" });
+    const otherError = await captureError(otherCaller.delete({ id: note.id }));
+    const missingError = await captureError(ownerCaller.delete({ id: "missing-delete" }));
+    expect(otherError).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+    expect(otherError).toMatchObject({ code: missingError.code, message: missingError.message });
+    await expect(ownerCaller.get({ id: note.id })).resolves.toMatchObject({ id: note.id });
+    await expect(callerFactory({ db, userId: null }).delete({ id: note.id })).rejects.toMatchObject(
+      {
+        code: "UNAUTHORIZED",
+      },
+    );
   });
 
   it("rejects unauthenticated creation", async () => {

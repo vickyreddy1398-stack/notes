@@ -29,6 +29,42 @@ describe("NotePage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("ready to save");
   });
 
+  it("requires confirmation and cancellation leaves the note unchanged", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
+      response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+      }) as Promise<Response>,
+    );
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByRole("heading", { name: "Delete confirmation" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("heading", { name: "Delete confirmation" })).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Private title")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the note available when confirmed deletion fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_input, init) =>
+        response(
+          init?.method === "POST"
+            ? undefined
+            : { id: "note-1", title: "Private title", body: "Private body" },
+          init?.method !== "POST",
+        ) as Promise<Response>,
+    );
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Delete" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("note not found"));
+    expect(screen.getByDisplayValue("Private title")).toBeInTheDocument();
+  });
+
   it("does not render note contents when loading fails", async () => {
     vi.spyOn(globalThis, "fetch").mockReturnValue(response(undefined, false) as Promise<Response>);
     render(<NotePage id="not-owned" />);

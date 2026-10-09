@@ -8,8 +8,11 @@ export function NotePage({ id }: Props) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -19,6 +22,7 @@ export function NotePage({ id }: Props) {
         if (!active) return;
         setTitle(note.title);
         setBody(note.body ?? "");
+        setLoaded(true);
       })
       .catch((cause) => {
         if (active) setError(cause instanceof Error ? cause.message : "Unable to load note");
@@ -37,7 +41,7 @@ export function NotePage({ id }: Props) {
         <p>Loading note…</p>
       </main>
     );
-  if (error) {
+  if (error && !loaded) {
     return (
       <main>
         <h1>Note unavailable</h1>
@@ -47,9 +51,23 @@ export function NotePage({ id }: Props) {
     );
   }
 
+  async function deleteNote() {
+    setDeleting(true);
+    setError("");
+    try {
+      await trpc.notes.delete({ id });
+      window.location.href = "/";
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to delete note");
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
+
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
       <h1>Edit note</h1>
+      {error && <p role="alert">{error}</p>}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -86,6 +104,22 @@ export function NotePage({ id }: Props) {
           Cancel
         </a>
       </form>
+      {!confirmingDelete ? (
+        <button type="button" onClick={() => setConfirmingDelete(true)}>
+          Delete
+        </button>
+      ) : (
+        <section aria-labelledby="delete-confirmation-heading">
+          <h2 id="delete-confirmation-heading">Delete confirmation</h2>
+          <p>This note will be permanently deleted.</p>
+          <button type="button" onClick={() => void deleteNote()} disabled={deleting}>
+            {deleting ? "Deleting…" : "Confirm Delete"}
+          </button>
+          <button type="button" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+            Cancel
+          </button>
+        </section>
+      )}
       {saved && <p role="status">Changes are ready to save.</p>}
     </main>
   );
