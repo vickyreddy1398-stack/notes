@@ -8,6 +8,16 @@ async function signUp(page: Page) {
   await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
 }
 
+test("shows normalized tags after saving a quick note", async ({ page }) => {
+  await signUp(page);
+  await page.getByLabel("Title").fill("Tagged quick note");
+  await page.getByLabel("Tags").fill("Work, work, Personal");
+  await page.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByRole("status")).toHaveText("Note saved");
+  const note = page.getByRole("listitem").filter({ hasText: "Tagged quick note" });
+  await expect(note).toContainText("Tags: work, personal");
+});
+
 test("signed-in user saves a literal quick note in the main list", async ({ page }) => {
   await signUp(page);
   const started = Date.now();

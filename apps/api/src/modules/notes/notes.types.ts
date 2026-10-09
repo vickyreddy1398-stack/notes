@@ -19,6 +19,9 @@ const normalizedTags = z
 export const createNoteInput = z.object({
   title: z.string().min(1, "Title is required").max(NOTE_TITLE_MAX, "Title is too long"),
   body: z.string().max(NOTE_BODY_MAX, "Body is too long").optional(),
+  tags: normalizedTags.optional().refine((value) => !value || value.length <= NOTE_TAGS_MAX, {
+    message: "At most 10 tags are allowed",
+  }),
 });
 export type CreateNoteInput = z.infer<typeof createNoteInput>;
 

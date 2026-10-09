@@ -18,6 +18,25 @@ async function getTagNames(db: Db, ownerId: string, noteId: string) {
   return rows.map((row) => row.name);
 }
 
+async function replaceTagLinks(db: Db, ownerId: string, noteId: string, names: string[] = []) {
+  const tagIds: string[] = [];
+  for (const name of names) {
+    await db
+      .insert(tags)
+      .values({ id: randomUUID(), ownerId, name })
+      .onConflictDoNothing({ target: [tags.ownerId, tags.name] });
+    const [tag] = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(and(eq(tags.ownerId, ownerId), eq(tags.name, name)));
+    tagIds.push(tag.id);
+  }
+  await db.delete(noteTags).where(eq(noteTags.noteId, noteId));
+  if (tagIds.length > 0) {
+    await db.insert(noteTags).values(tagIds.map((tagId) => ({ noteId, tagId })));
+  }
+}
+
 export function createNotesService(db: Db) {
   return {
     async list(ownerId: string, input: ListNotesInput = {}) {
@@ -36,7 +55,7 @@ export function createNotesService(db: Db) {
           .where(and(eq(tags.id, input.tagId), eq(tags.ownerId, ownerId)));
         if (!ownedTag) throw notFound("tag");
 
-        return db
+        const filtered = await db
           .select({
             id: notes.id,
             ownerId: notes.ownerId,
@@ -51,6 +70,12 @@ export function createNotesService(db: Db) {
           .innerJoin(noteTags, eq(noteTags.noteId, notes.id))
           .where(and(...activeOwnerConditions, eq(noteTags.tagId, ownedTag.id)))
           .orderBy(...order);
+        return Promise.all(
+          filtered.map(async (note) => ({
+            ...note,
+            tags: await getTagNames(db, ownerId, note.id),
+          })),
+        );
       }
 
       const conditions = [...activeOwnerConditions];
@@ -59,11 +84,14 @@ export function createNotesService(db: Db) {
         const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
         if (searchCondition) conditions.push(searchCondition);
       }
-      return db
+      const listed = await db
         .select()
         .from(notes)
         .where(and(...conditions))
         .orderBy(...order);
+      return Promise.all(
+        listed.map(async (note) => ({ ...note, tags: await getTagNames(db, ownerId, note.id) })),
+      );
     },
 
     async getOwned(ownerId: string, id: string) {
@@ -158,39 +186,27 @@ export function createNotesService(db: Db) {
           .returning();
 
         if (tagsChanged) {
-          const tagIds: string[] = [];
-          for (const name of input.tags) {
-            await tx
-              .insert(tags)
-              .values({ id: randomUUID(), ownerId, name })
-              .onConflictDoNothing({ target: [tags.ownerId, tags.name] });
-            const [tag] = await tx
-              .select({ id: tags.id })
-              .from(tags)
-              .where(and(eq(tags.ownerId, ownerId), eq(tags.name, name)));
-            tagIds.push(tag.id);
-          }
-          await tx.delete(noteTags).where(eq(noteTags.noteId, input.id));
-          if (tagIds.length > 0) {
-            await tx.insert(noteTags).values(tagIds.map((tagId) => ({ noteId: input.id, tagId })));
-          }
+          await replaceTagLinks(tx as unknown as Db, ownerId, input.id, input.tags);
         }
         return note;
       });
     },
 
     async create(ownerId: string, input: CreateNoteInput) {
-      const [note] = await db
-        .insert(notes)
-        .values({
-          id: randomUUID(),
-          ownerId,
-          title: input.title,
-          body: input.body ?? null,
-          archived: false,
-        })
-        .returning();
-      return note;
+      return db.transaction(async (tx) => {
+        const [note] = await tx
+          .insert(notes)
+          .values({
+            id: randomUUID(),
+            ownerId,
+            title: input.title,
+            body: input.body ?? null,
+            archived: false,
+          })
+          .returning();
+        await replaceTagLinks(tx as unknown as Db, ownerId, note.id, input.tags ?? []);
+        return { ...note, tags: input.tags ?? [] };
+      });
     },
   };
 }
