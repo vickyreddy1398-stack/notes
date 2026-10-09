@@ -9,6 +9,15 @@ function escapeLike(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
+async function getTagNames(db: Db, ownerId: string, noteId: string) {
+  const rows = await db
+    .select({ name: tags.name })
+    .from(noteTags)
+    .innerJoin(tags, and(eq(tags.id, noteTags.tagId), eq(tags.ownerId, ownerId)))
+    .where(eq(noteTags.noteId, noteId));
+  return rows.map((row) => row.name);
+}
+
 export function createNotesService(db: Db) {
   return {
     async list(ownerId: string, input: ListNotesInput = {}) {
@@ -64,7 +73,7 @@ export function createNotesService(db: Db) {
         .from(notes)
         .where(and(eq(notes.id, id), eq(notes.ownerId, ownerId)));
       if (!note) throw notFound("note");
-      return note;
+      return { ...note, tags: await getTagNames(db, ownerId, id) };
     },
 
     async archived(ownerId: string) {
@@ -115,13 +124,48 @@ export function createNotesService(db: Db) {
     },
 
     async update(ownerId: string, input: UpdateNoteInput) {
-      const [note] = await db
-        .update(notes)
-        .set({ title: input.title, body: input.body, updatedAt: new Date() })
-        .where(and(eq(notes.id, input.id), eq(notes.ownerId, ownerId)))
-        .returning();
-      if (!note) throw notFound("note");
-      return note;
+      return db.transaction(async (tx) => {
+        const [current] = await tx
+          .select()
+          .from(notes)
+          .where(and(eq(notes.id, input.id), eq(notes.ownerId, ownerId)));
+        if (!current) throw notFound("note");
+
+        const currentNames = await getTagNames(tx as unknown as Db, ownerId, input.id);
+        const tagsChanged =
+          currentNames.length !== input.tags.length ||
+          currentNames.some((name) => !input.tags.includes(name));
+        const contentChanged = current.title !== input.title || current.body !== input.body;
+        const [note] = await tx
+          .update(notes)
+          .set({
+            title: input.title,
+            body: input.body,
+            ...(contentChanged || tagsChanged ? { updatedAt: new Date() } : {}),
+          })
+          .where(and(eq(notes.id, input.id), eq(notes.ownerId, ownerId)))
+          .returning();
+
+        if (tagsChanged) {
+          const tagIds: string[] = [];
+          for (const name of input.tags) {
+            await tx
+              .insert(tags)
+              .values({ id: randomUUID(), ownerId, name })
+              .onConflictDoNothing({ target: [tags.ownerId, tags.name] });
+            const [tag] = await tx
+              .select({ id: tags.id })
+              .from(tags)
+              .where(and(eq(tags.ownerId, ownerId), eq(tags.name, name)));
+            tagIds.push(tag.id);
+          }
+          await tx.delete(noteTags).where(eq(noteTags.noteId, input.id));
+          if (tagIds.length > 0) {
+            await tx.insert(noteTags).values(tagIds.map((tagId) => ({ noteId: input.id, tagId })));
+          }
+        }
+        return note;
+      });
     },
 
     async create(ownerId: string, input: CreateNoteInput) {

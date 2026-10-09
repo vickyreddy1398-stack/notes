@@ -38,7 +38,7 @@ export const trpc = {
     delete: (input: { id: string }) => call<Note>("notes.delete", input),
     create: (input: { title: string; body?: string }) => call<Note>("notes.create", input),
     get: (input: { id: string }) => call<Note>("notes.get", input, "GET"),
-    update: (input: { id: string; title: string; body: string }) =>
+    update: (input: { id: string; title: string; body: string; tags: string }) =>
       call<Note>("notes.update", input),
   },
   tags: {
@@ -56,4 +56,5 @@ type Note = {
   archived: boolean;
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
 };

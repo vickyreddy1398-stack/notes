@@ -11,6 +11,7 @@ type Props = { id: string };
 export function NotePage({ id }: Props) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
   const [pinning, setPinning] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,7 @@ export function NotePage({ id }: Props) {
         if (!active) return;
         setTitle(note.title);
         setBody(note.body ?? "");
+        setTags(note.tags?.join(", ") ?? "");
         setPinned(note.pinned);
         setLoaded(true);
       })
@@ -61,15 +63,16 @@ export function NotePage({ id }: Props) {
   async function saveNote() {
     setError("");
     setSaved(false);
-    const parsed = updateNoteInput.safeParse({ id, title, body });
+    const parsed = updateNoteInput.safeParse({ id, title, body, tags });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid note");
       return;
     }
     try {
-      const note = await trpc.notes.update(parsed.data);
+      const note = await trpc.notes.update({ ...parsed.data, tags });
       setTitle(note.title);
       setBody(note.body ?? "");
+      setTags(parsed.data.tags.join(", "));
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save note");
@@ -126,6 +129,17 @@ export function NotePage({ id }: Props) {
           required
           onChange={(event) => {
             setTitle(event.target.value);
+            setSaved(false);
+          }}
+          style={{ display: "block", maxWidth: "100%", width: "100%" }}
+        />
+        <label htmlFor="note-editor-tags">Tags</label>
+        <input
+          id="note-editor-tags"
+          name="tags"
+          value={tags}
+          onChange={(event) => {
+            setTags(event.target.value);
             setSaved(false);
           }}
           style={{ display: "block", maxWidth: "100%", width: "100%" }}

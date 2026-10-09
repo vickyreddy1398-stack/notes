@@ -514,6 +514,41 @@ describe("notes", () => {
     });
   });
 
+  it("normalizes owner-scoped tags and replaces links atomically", async () => {
+    const owner = await users.signUp({
+      email: `tagged-note-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `tagged-note-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    const otherCaller = callerFactory({ db, userId: other.user.id });
+    const note = await ownerCaller.create({ title: "Tagged" });
+    const saved = await ownerCaller.update({
+      id: note.id,
+      title: "Tagged",
+      body: "",
+      tags: " Work, work,  PERSONAL , , ",
+    });
+    expect(saved.id).toBe(note.id);
+    expect(await ownerCaller.get({ id: note.id })).toMatchObject({ tags: ["work", "personal"] });
+    const ownerTags = await db.select().from(tags).where(eq(tags.ownerId, owner.user.id));
+    expect(ownerTags.map((tag) => tag.name).sort()).toEqual(["personal", "work"]);
+    await expect(
+      otherCaller.update({ id: note.id, title: "Nope", body: "", tags: "private" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(
+      ownerCaller.update({
+        id: note.id,
+        title: "Tagged",
+        body: "",
+        tags: Array.from({ length: 11 }, (_, index) => `tag-${index}`).join(","),
+      }),
+    ).rejects.toThrow();
+  });
+
   it("rejects unauthenticated creation", async () => {
     await expect(callerFactory({ db, userId: null }).create({ title: "no" })).rejects.toThrow();
   });
