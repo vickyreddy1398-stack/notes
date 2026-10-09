@@ -1,0 +1,17 @@
+{
+  "name": "notes",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "db:generate": "pnpm --filter api db:generate",
+    "db:migrate": "pnpm --filter api db:migrate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.2",
+    "typescript": "^5.9.3"
+  }
+}
