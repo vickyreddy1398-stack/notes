@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import { App } from "./app";
+import { SignInPage } from "./screens/sign-in/sign-in.page";
 
-it("renders the app shell", () => {
-  render(<App />);
-  expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
+it("renders the sign-in screen", () => {
+  render(<SignInPage />);
+  expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
 });

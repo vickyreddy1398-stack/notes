@@ -55,6 +55,9 @@ export function SignUpPage() {
         <button type="submit">Sign up</button>
       </form>
       {error && <p role="alert">{error}</p>}
+      <p>
+        <a href="/sign-in">Already have an account? Sign in</a>
+      </p>
     </main>
   );
 }
