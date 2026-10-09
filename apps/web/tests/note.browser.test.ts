@@ -26,6 +26,11 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
   await expect(page.getByLabel("Title")).toHaveValue("Private editor title");
   await expect(page.getByLabel("Body")).toHaveValue("Private editor body");
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+  await page.getByRole("link", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: "Private editor title" })).toBeVisible();
+  await expect(page.getByText("Private editor body")).toBeVisible();
+  await noteLink.click();
+  await expect(page.getByRole("heading", { name: "Edit note" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pin" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
   await page.getByRole("button", { name: "Archive" }).click();
@@ -49,6 +54,20 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await page.reload();
+  await expect(page.getByLabel("Title")).toHaveValue("Saved editor title");
+  await expect(page.getByLabel("Body")).toHaveValue("Saved editor body");
+
+  await page.getByLabel("Title").fill("Discarded editor title");
+  await page.getByLabel("Body").fill("Discarded editor body");
+  await page.getByRole("link", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: "Discard changes" })).toBeVisible();
+  await page.getByRole("button", { name: "Stay" }).click();
+  await expect(page.getByLabel("Title")).toHaveValue("Discarded editor title");
+  await expect(page.getByLabel("Body")).toHaveValue("Discarded editor body");
+  await page.getByRole("link", { name: "Cancel" }).click();
+  await page.getByRole("link", { name: "Discard changes" }).click();
+  await expect(page.getByRole("heading", { name: "Saved editor title" })).toBeVisible();
+  await page.getByRole("link", { name: "Saved editor title" }).click();
   await expect(page.getByLabel("Title")).toHaveValue("Saved editor title");
   await expect(page.getByLabel("Body")).toHaveValue("Saved editor body");
 
