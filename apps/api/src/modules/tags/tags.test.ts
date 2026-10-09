@@ -120,6 +120,47 @@ describe("tag persistence", () => {
     });
   });
 
+  it("removes tags from the available list after links are replaced or deleted", async () => {
+    const owner = await createUser("cleanup-owner");
+    const first = await notes.create(owner.id, {
+      title: "First note",
+      tags: ["orphan", "shared"],
+    });
+    await notes.create(owner.id, { title: "Second note", tags: ["shared"] });
+
+    const initial = await callerFactory({ db, userId: owner.id }).list();
+    expect(initial.map((tag) => tag.name)).toEqual(["orphan", "shared"]);
+
+    await notes.update(owner.id, {
+      id: first.id,
+      title: "First note",
+      body: "",
+      tags: ["shared"],
+    });
+    expect(await callerFactory({ db, userId: owner.id }).list()).toEqual([
+      expect.objectContaining({ name: "shared" }),
+    ]);
+
+    const deleteOnly = await notes.create(owner.id, {
+      title: "Delete-only note",
+      tags: ["delete-only"],
+    });
+    expect((await callerFactory({ db, userId: owner.id }).list()).map((tag) => tag.name)).toEqual([
+      "delete-only",
+      "shared",
+    ]);
+
+    await notes.delete(owner.id, deleteOnly.id);
+    expect((await callerFactory({ db, userId: owner.id }).list()).map((tag) => tag.name)).toEqual([
+      "shared",
+    ]);
+
+    const storedUnused = await db.select().from(tags).where(eq(tags.ownerId, owner.id));
+    expect(storedUnused.map((tag) => tag.name)).toEqual(
+      expect.arrayContaining(["orphan", "delete-only", "shared"]),
+    );
+  });
+
   it("rejects associations and tags that reference missing rows", async () => {
     const owner = await createUser("foreign-key-owner");
     const note = await notes.create(owner.id, { title: "Existing note" });
