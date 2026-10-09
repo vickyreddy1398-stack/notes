@@ -1,6 +1,6 @@
 import { initTRPC } from "@trpc/server";
 
-export type Context = { userId: string | null };
+export type Context = { userId: string | null; setSession?: (token: string) => void };
 
 const t = initTRPC.context<Context>().create();
 

@@ -1,7 +1,12 @@
+import { SignUpPage } from "./screens/sign-up/sign-up.page";
+
 export function App() {
   return (
-    <main>
-      <h1>Notes</h1>
-    </main>
+    <>
+      <header>
+        <h1>Notes</h1>
+      </header>
+      <SignUpPage />
+    </>
   );
 }
