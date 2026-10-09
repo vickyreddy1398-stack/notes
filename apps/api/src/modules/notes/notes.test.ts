@@ -416,6 +416,70 @@ describe("notes", () => {
     );
   });
 
+  it("explicitly saves owner edits, updates only updatedAt, and hides non-owned notes", async () => {
+    const owner = await users.signUp({
+      email: `update-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `update-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    const otherCaller = callerFactory({ db, userId: other.user.id });
+    const created = await ownerCaller.create({ title: "Original", body: "Original body" });
+    const before = (await db.select().from(notes).where(eq(notes.id, created.id)))[0];
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const updated = await ownerCaller.update({
+      id: created.id,
+      title: "<b>Saved</b>",
+      body: "![literal](x)",
+    });
+    expect(updated).toMatchObject({
+      id: created.id,
+      title: "<b>Saved</b>",
+      body: "![literal](x)",
+      createdAt: before.createdAt,
+    });
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(before.updatedAt.getTime());
+    expect(await db.select().from(notes).where(eq(notes.id, created.id))).toMatchObject([updated]);
+
+    const otherError = await captureError(
+      otherCaller.update({ id: created.id, title: "Nope", body: "" }),
+    );
+    const missingError = await captureError(
+      ownerCaller.update({ id: "missing-update", title: "Nope", body: "" }),
+    );
+    expect(otherError).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+    expect(missingError).toMatchObject({ code: otherError.code, message: otherError.message });
+    await expect(
+      callerFactory({ db, userId: null }).update({ id: created.id, title: "Nope", body: "" }),
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
+  it("validates update content before saving", async () => {
+    const { user } = await users.signUp({
+      email: `update-validation-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const caller = callerFactory({ db, userId: user.id });
+    const note = await caller.create({ title: "Valid" });
+    await expect(caller.update({ id: note.id, title: "", body: "" })).rejects.toThrow();
+    await expect(
+      caller.update({ id: note.id, title: "x".repeat(201), body: "" }),
+    ).rejects.toThrow();
+    await expect(
+      caller.update({ id: note.id, title: "Valid", body: "x".repeat(10001) }),
+    ).rejects.toThrow();
+    await expect(caller.get({ id: note.id })).resolves.toMatchObject({
+      title: "Valid",
+      body: null,
+    });
+  });
+
   it("rejects unauthenticated creation", async () => {
     await expect(callerFactory({ db, userId: null }).create({ title: "no" })).rejects.toThrow();
   });

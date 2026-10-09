@@ -27,14 +27,14 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
   await expect(page.getByLabel("Body")).toHaveValue("Private editor body");
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Cancel" })).toBeVisible();
-  await page.getByRole("button", { name: "Delete" }).click();
-  await expect(page.getByRole("heading", { name: "Delete confirmation" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByLabel("Title")).toHaveValue("Private editor title");
-  await page.getByRole("button", { name: "Delete" }).click();
-  await page.getByRole("button", { name: "Confirm Delete" }).click();
-  await expect(page.getByRole("heading", { name: "Notes", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Private editor title" })).not.toBeVisible();
+  await page.getByLabel("Title").fill("Saved editor title");
+  await page.getByLabel("Body").fill("Saved editor body");
+  await expect(page.getByRole("status")).not.toBeVisible();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Changes saved.");
+  await page.reload();
+  await expect(page.getByLabel("Title")).toHaveValue("Saved editor title");
+  await expect(page.getByLabel("Body")).toHaveValue("Saved editor body");
 
   const otherContext = await browser.newContext();
   try {

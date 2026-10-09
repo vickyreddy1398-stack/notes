@@ -1,6 +1,12 @@
 import { protectedProcedure, router } from "../../trpc/trpc";
 import { createNotesService } from "./notes.service";
-import { createNoteInput, getNoteInput, listNotesInput, noteIdInput } from "./notes.types";
+import {
+  createNoteInput,
+  getNoteInput,
+  listNotesInput,
+  noteIdInput,
+  updateNoteInput,
+} from "./notes.types";
 
 export const notesRouter = router({
   list: protectedProcedure
@@ -19,4 +25,7 @@ export const notesRouter = router({
   create: protectedProcedure
     .input(createNoteInput)
     .mutation(({ ctx, input }) => createNotesService(ctx.db).create(ctx.userId, input)),
+  update: protectedProcedure
+    .input(updateNoteInput)
+    .mutation(({ ctx, input }) => createNotesService(ctx.db).update(ctx.userId, input)),
 });
