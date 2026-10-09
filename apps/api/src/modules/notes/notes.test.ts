@@ -59,6 +59,32 @@ describe("notes", () => {
       },
     );
   });
+  it("uses the authenticated owner even when an owner_id is supplied", async () => {
+    const owner = await users.signUp({
+      email: `server-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `server-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const caller = callerFactory({ db, userId: owner.user.id });
+    const created = await caller.create({
+      title: "Server owned",
+      owner_id: other.user.id,
+    } as never);
+    expect(created.ownerId).toBe(owner.user.id);
+
+    await caller.update({
+      id: created.id,
+      title: "Still server owned",
+      body: "",
+      owner_id: other.user.id,
+    } as never);
+    const [stored] = await db.select().from(notes).where(eq(notes.id, created.id));
+    expect(stored.ownerId).toBe(owner.user.id);
+  });
+
   it("persists a note with owner, active status, and timestamps", async () => {
     const { user } = await users.signUp({
       email: `note-${Date.now()}@example.com`,
