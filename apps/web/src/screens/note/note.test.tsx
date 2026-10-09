@@ -12,6 +12,48 @@ const response = (data: unknown, ok = true) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("NotePage", () => {
+  it("pins and unpins the loaded note", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input, _init) => {
+      const path = String(input);
+      const data = path.includes("notes.get")
+        ? { id: "note-1", title: "Private title", body: "Private body", pinned: false }
+        : {
+            id: "note-1",
+            title: "Private title",
+            body: "Private body",
+            pinned: path.includes("notes.pin") && !path.includes("notes.unpin"),
+          };
+      return response(data) as Promise<Response>;
+    });
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Pin" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pin" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unpin" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Unpin" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pin" })).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+  it("reports a failed pin without changing the visible state", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const path = String(input);
+      if (path.includes("notes.pin") && init?.method === "POST") {
+        return response(undefined, false) as Promise<Response>;
+      }
+      return response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+        pinned: false,
+      }) as Promise<Response>;
+    });
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pin" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Pin" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("note not found"));
+    expect(screen.getByRole("button", { name: "Pin" })).toBeInTheDocument();
+  });
+
   it("loads a note into editable fields with Save and Cancel", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockReturnValue(
       response({

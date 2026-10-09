@@ -25,6 +25,40 @@ beforeAll(async () => {
 });
 
 describe("notes", () => {
+  it("pins and unpins only for the owner without changing updatedAt", async () => {
+    const owner = await users.signUp({
+      email: `pin-owner-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const other = await users.signUp({
+      email: `pin-other-${Date.now()}@example.com`,
+      password: "password123",
+    });
+    const ownerCaller = callerFactory({ db, userId: owner.user.id });
+    const otherCaller = callerFactory({ db, userId: other.user.id });
+    const created = await ownerCaller.create({ title: "Pin me" });
+    const [before] = await db.select().from(notes).where(eq(notes.id, created.id));
+
+    await expect(ownerCaller.pin({ id: created.id })).resolves.toMatchObject({ pinned: true });
+    const [pinned] = await db.select().from(notes).where(eq(notes.id, created.id));
+    expect(pinned.pinned).toBe(true);
+    expect(pinned.updatedAt).toEqual(before.updatedAt);
+
+    await expect(ownerCaller.unpin({ id: created.id })).resolves.toMatchObject({ pinned: false });
+    const [unpinned] = await db.select().from(notes).where(eq(notes.id, created.id));
+    expect(unpinned.pinned).toBe(false);
+    expect(unpinned.updatedAt).toEqual(before.updatedAt);
+
+    const privateError = await captureError(otherCaller.pin({ id: created.id }));
+    const missingError = await captureError(ownerCaller.pin({ id: "missing-pin-note" }));
+    expect(privateError).toMatchObject({ code: "NOT_FOUND", message: "note not found" });
+    expect(missingError).toMatchObject({ code: privateError.code, message: privateError.message });
+    await expect(callerFactory({ db, userId: null }).pin({ id: created.id })).rejects.toMatchObject(
+      {
+        code: "UNAUTHORIZED",
+      },
+    );
+  });
   it("persists a note with owner, active status, and timestamps", async () => {
     const { user } = await users.signUp({
       email: `note-${Date.now()}@example.com`,

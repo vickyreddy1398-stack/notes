@@ -32,6 +32,8 @@ export const trpc = {
     list: (input: { tagId?: string; search?: string } = {}) =>
       call<Note[]>("notes.list", input, "GET"),
     archived: () => call<Note[]>("notes.archived"),
+    pin: (input: { id: string }) => call<Note>("notes.pin", input),
+    unpin: (input: { id: string }) => call<Note>("notes.unpin", input),
     restore: (input: { id: string }) => call<Note>("notes.restore", input),
     delete: (input: { id: string }) => call<Note>("notes.delete", input),
     create: (input: { title: string; body?: string }) => call<Note>("notes.create", input),
