@@ -30,6 +30,16 @@ export function createNotesService(db: Db) {
       ] as const;
 
       if (input.tagId) {
+        const tagConditions = [
+          ...activeOwnerConditions,
+          eq(noteTags.tagId, input.tagId),
+          eq(tags.ownerId, ownerId),
+        ];
+        if (input.search) {
+          const search = `%${escapeLike(input.search)}%`;
+          const searchCondition = or(ilike(notes.title, search), ilike(notes.body, search));
+          if (searchCondition) tagConditions.push(searchCondition);
+        }
         return db
           .select({
             id: notes.id,
@@ -44,13 +54,7 @@ export function createNotesService(db: Db) {
           .from(notes)
           .innerJoin(noteTags, eq(noteTags.noteId, notes.id))
           .innerJoin(tags, eq(tags.id, noteTags.tagId))
-          .where(
-            and(
-              ...activeOwnerConditions,
-              eq(noteTags.tagId, input.tagId),
-              eq(tags.ownerId, ownerId),
-            ),
-          )
+          .where(and(...tagConditions))
           .orderBy(...order);
       }
 
