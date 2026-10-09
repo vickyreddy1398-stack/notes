@@ -1,17 +1,21 @@
 type User = { id: string; email: string };
 
-async function call<T>(path: string, input?: unknown, query = false): Promise<T> {
+async function call<T>(path: string, input?: unknown, method?: "GET" | "POST"): Promise<T> {
   const baseUrl =
     window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
       ? "http://127.0.0.1:3001/api/trpc"
       : "/api/trpc";
   const hasInput = input !== undefined;
-  const url = `${baseUrl}/${path}${query && hasInput ? `?input=${encodeURIComponent(JSON.stringify(input))}` : ""}`;
+  const requestMethod = method ?? (hasInput ? "POST" : "GET");
+  const url =
+    requestMethod === "GET" && hasInput
+      ? `${baseUrl}/${path}?input=${encodeURIComponent(JSON.stringify(input))}`
+      : `${baseUrl}/${path}`;
   const response = await fetch(url, {
-    method: query || !hasInput ? "GET" : "POST",
+    method: requestMethod,
     credentials: "include",
-    headers: hasInput ? { "content-type": "application/json" } : undefined,
-    body: !query && hasInput ? JSON.stringify(input) : undefined,
+    headers: requestMethod === "POST" ? { "content-type": "application/json" } : undefined,
+    body: requestMethod === "POST" && hasInput ? JSON.stringify(input) : undefined,
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error?.message ?? "Request failed");
@@ -25,10 +29,11 @@ export const trpc = {
     currentUser: () => call<User>("users.currentUser"),
   },
   notes: {
-    list: (input: { tagId?: string } = {}) => call<Note[]>("notes.list", input, true),
+    list: (input: { tagId?: string } = {}) => call<Note[]>("notes.list", input, "GET"),
     archived: () => call<Note[]>("notes.archived"),
     restore: (input: { id: string }) => call<Note>("notes.restore", input),
     create: (input: { title: string; body?: string }) => call<Note>("notes.create", input),
+    get: (input: { id: string }) => call<Note>("notes.get", input, "GET"),
   },
   tags: {
     list: () => call<Tag[]>("tags.list"),
