@@ -1,0 +1,25 @@
+type User = { id: string; email: string };
+
+async function call(path: string, input?: unknown): Promise<User> {
+  const baseUrl =
+    window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+      ? "http://127.0.0.1:3001/api/trpc"
+      : "/api/trpc";
+  const hasInput = input !== undefined;
+  const response = await fetch(`${baseUrl}/${path}`, {
+    method: hasInput ? "POST" : "GET",
+    credentials: "include",
+    headers: hasInput ? { "content-type": "application/json" } : undefined,
+    body: hasInput ? JSON.stringify(input) : undefined,
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error?.message ?? "Request failed");
+  return payload.result.data;
+}
+
+export const trpc = {
+  users: {
+    signUp: (input: { email: string; password: string }) => call("users.signUp", input),
+    currentUser: () => call("users.currentUser"),
+  },
+};

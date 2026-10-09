@@ -8,6 +8,7 @@ const schema = z.object({
   DB_USER: z.string().default("app"),
   DB_PASSWORD: z.string().default("app"),
   DB_DATABASE: z.string().default("app"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
 export const env = schema.parse(process.env);

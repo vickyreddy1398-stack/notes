@@ -2,6 +2,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import { db } from "./db";
 import { appRouter } from "./trpc/app.router";
 
 export function createApp() {
@@ -11,7 +12,10 @@ export function createApp() {
   app.use(cookieParser());
   app.use(
     "/api/trpc",
-    createExpressMiddleware({ router: appRouter, createContext: () => ({ userId: null }) }),
+    createExpressMiddleware({
+      router: appRouter,
+      createContext: ({ req, res }) => ({ userId: null, db, req, res }),
+    }),
   );
   return app;
 }
