@@ -41,33 +41,53 @@ export function SignInPage() {
       </AppShell>
     );
   return (
-    <main>
-      <h1>Sign in</h1>
-      <h2>Notes</h2>
+    <main className="auth-card">
+      <div className="auth-card__header">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="topbar__mark">N</span>
+          <span className="text-lg font-semibold text-[var(--color-text)]">Notes</span>
+        </div>
+        <h1>Welcome back</h1>
+        <p className="text-[var(--color-text-muted)]">Sign in to your private notes.</p>
+      </div>
       <form onSubmit={submit}>
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
-        <button type="submit">Sign in</button>
+        <label className="field">
+          <span className="field__label">Email</span>
+          <input
+            className="field__control"
+            type="email"
+            name="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Password</span>
+          <input
+            className="field__control"
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </label>
+        <button className="button w-full" type="submit">
+          Sign in
+        </button>
       </form>
-      {error && <p role="alert">{error}</p>}
-      <p>
-        <a href="/">Create an account</a>
+      {error && (
+        <p role="alert" className="field__error">
+          {error}
+        </p>
+      )}
+      <p className="auth-card__footer">
+        New here? <a href="/">Create an account</a>
       </p>
     </main>
   );

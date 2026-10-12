@@ -4,7 +4,7 @@ async function signUp(page: Page) {
   await page.goto("/");
   await page.getByLabel("Email").fill(`note-browser-${Date.now()}@example.com`);
   await page.getByLabel("Password").fill("a password");
-  await page.getByRole("button", { name: "Sign up" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
 }
 
