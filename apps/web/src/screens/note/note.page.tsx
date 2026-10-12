@@ -273,16 +273,44 @@ export function NotePage({ id }: Props) {
             Delete permanently
           </button>
         ) : (
-          <section aria-labelledby="delete-confirmation-heading">
-            <h2 id="delete-confirmation-heading">Delete confirmation</h2>
-            <p>This note will be permanently deleted.</p>
-            <button type="button" onClick={() => void deleteNote()} disabled={deleting}>
-              {deleting ? "Deleting…" : "Confirm Delete"}
-            </button>
-            <button type="button" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
-              Cancel
-            </button>
-          </section>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-title"
+            aria-describedby="delete-description"
+          >
+            <section className="modal__dialog">
+              <div
+                className="mb-4 grid h-10 w-10 place-items-center rounded-full bg-[var(--color-danger-soft)] text-[var(--color-danger)]"
+                aria-hidden="true"
+              >
+                !
+              </div>
+              <h2 id="delete-title">Delete this note permanently?</h2>
+              <p id="delete-description" className="text-[var(--color-text-muted)]">
+                “{title}” will be permanently deleted. This action cannot be undone.
+              </p>
+              <div className="modal__actions">
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button button--danger"
+                  type="button"
+                  onClick={() => void deleteNote()}
+                  disabled={deleting}
+                >
+                  {deleting ? "Deleting…" : "Delete permanently"}
+                </button>
+              </div>
+            </section>
+          </div>
         )}
       </div>
       {confirmingDiscard && (

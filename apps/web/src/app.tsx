@@ -23,7 +23,7 @@ function SignedInWorkspace({ archived = false }: { archived?: boolean }) {
     );
   if (!email) return <SignInPage />;
   return (
-    <AppShell email={email}>
+    <AppShell email={email} activeScreen={archived ? "archived" : "notes"}>
       {archived ? (
         <ArchivedPage
           onBack={() => {
@@ -53,7 +53,7 @@ function SignedInNote({ id }: { id: string }) {
     );
   if (!email) return <SignInPage />;
   return (
-    <AppShell email={email}>
+    <AppShell email={email} activeScreen="notes">
       <NotePage id={id} />
     </AppShell>
   );
