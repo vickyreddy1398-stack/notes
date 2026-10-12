@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
 
-type Props = { email: string; children: React.ReactNode };
+type Props = { email: string; activeScreen: "notes" | "archived"; children: React.ReactNode };
 
 type Tag = { id: string; name: string };
 
-export function AppShell({ email, children }: Props) {
+export function AppShell({ email, activeScreen, children }: Props) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -42,10 +42,18 @@ export function AppShell({ email, children }: Props) {
         <section className="sidebar__section">
           <div className="sidebar__label">Workspace</div>
           <nav className="sidebar__nav" aria-label="Workspace">
-            <a className="sidebar__item is-current" aria-current="page" href="/">
+            <a
+              className={`sidebar__item${activeScreen === "notes" ? " is-current" : ""}`}
+              aria-current={activeScreen === "notes" ? "page" : undefined}
+              href="/"
+            >
               ▤ <span>Notes</span>
             </a>
-            <a className="sidebar__item" href="/archived">
+            <a
+              className={`sidebar__item${activeScreen === "archived" ? " is-current" : ""}`}
+              aria-current={activeScreen === "archived" ? "page" : undefined}
+              href="/archived"
+            >
               ▱ <span>Archived</span>
             </a>
           </nav>

@@ -94,3 +94,29 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
     await otherContext.close();
   }
 });
+
+test("renders and completes the delete confirmation", async ({ page }) => {
+  await signUp(page, "delete-editor");
+  await page.getByLabel("Title").fill("Delete this test note");
+  await page.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByRole("heading", { name: "Delete this test note" })).toBeVisible();
+  await page.getByRole("link", { name: "Delete this test note" }).click();
+  await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
+  await page.getByRole("button", { name: "Delete" }).click();
+  const dialog = page.locator(".modal");
+  await expect(dialog).toHaveAttribute("role", "dialog");
+  await expect(dialog.locator(".modal__dialog")).toBeVisible();
+  await expect(dialog.locator(".mb-4")).toBeVisible();
+  await expect(
+    dialog.getByRole("heading", { name: "Delete this note permanently?" }),
+  ).toBeVisible();
+  await expect(dialog.getByText("Delete this test note", { exact: false })).toBeVisible();
+  await expect(dialog.locator(".button--secondary")).toHaveText("Cancel");
+  await expect(dialog.locator(".button--danger")).toHaveText("Delete permanently");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await dialog.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:5173/");
+  await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
+});

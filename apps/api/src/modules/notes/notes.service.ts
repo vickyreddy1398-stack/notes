@@ -104,11 +104,17 @@ export function createNotesService(db: Db) {
     },
 
     async archived(ownerId: string) {
-      return db
+      const archivedNotes = await db
         .select()
         .from(notes)
         .where(and(eq(notes.ownerId, ownerId), eq(notes.archived, true)))
         .orderBy(desc(notes.updatedAt), desc(notes.createdAt), desc(notes.id));
+      return Promise.all(
+        archivedNotes.map(async (note) => ({
+          ...note,
+          tags: await getTagNames(db, ownerId, note.id),
+        })),
+      );
     },
 
     async pin(ownerId: string, id: string) {

@@ -31,7 +31,7 @@ export function SignUpPage() {
 
   if (user)
     return (
-      <AppShell email={user.email}>
+      <AppShell email={user.email} activeScreen="notes">
         <NotesPage email={user.email} />
       </AppShell>
     );

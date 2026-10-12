@@ -47,7 +47,7 @@ test("sidebar Archived uses the archived route and sidebar tags filter notes", a
   await expect(page.locator("article.note-row")).toContainText("Sidebar filtered note");
   await page.locator("aside.sidebar").getByRole("link", { name: "Archived" }).click();
   await expect(page).toHaveURL("/archived");
-  await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Archived", exact: true })).toBeVisible();
 });
 
 test("shows a create-first-note hint for empty active, search, and tag results", async ({
@@ -178,7 +178,7 @@ test("keeps search and tag filtering independent and keeps archived unfiltered",
   await expect(page.getByLabel("Search notes")).toHaveValue("");
 
   await page.getByRole("button", { name: "Archived" }).click();
-  await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Archived", exact: true })).toBeVisible();
   await expect(page.getByText("Archived tagged note")).toBeVisible();
   await page.getByRole("button", { name: "Notes" }).click();
   await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
@@ -229,8 +229,8 @@ test("removes unused tags after replacing tags and permanently deleting a note",
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await page.getByRole("button", { name: "Delete" }).click();
-  await expect(page.getByRole("heading", { name: "Delete confirmation" })).toBeVisible();
-  await page.getByRole("button", { name: "Confirm Delete" }).click();
+  await expect(page.getByRole("heading", { name: "Delete this note permanently?" })).toBeVisible();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL("/");
   await page.reload();
   await expect(page.getByLabel("Filter by tag")).not.toContainText("delete-only");

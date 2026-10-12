@@ -22,11 +22,12 @@ async function currentUserId(page: import("@playwright/test").Page) {
 }
 
 async function openArchived(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "Archived" }).click();
-  await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible();
+  await page.locator("aside.sidebar").getByRole("link", { name: "Archived" }).click();
+  await expect(page).toHaveURL("/archived");
+  await expect(page.getByRole("heading", { name: "Archived", exact: true })).toBeVisible();
 }
 
-test("shows the owner's archived notes in order and hides private details", async ({ page }) => {
+test("shows the approved archived design without exposing private bodies", async ({ page }) => {
   await signUp(page);
   const ownerId = await currentUserId(page);
   const other = await createUsersService(db).signUp({
@@ -40,7 +41,7 @@ test("shows the owner's archived notes in order and hides private details", asyn
       id: `archived-new-${suffix}`,
       ownerId,
       title: "Newest archived",
-      body: "Private body should not be shown",
+      body: "Private body must not be shown",
       archived: true,
       createdAt: new Date("2025-01-01T00:00:00.000Z"),
       updatedAt: new Date("2025-01-03T00:00:00.000Z"),
@@ -73,13 +74,19 @@ test("shows the owner's archived notes in order and hides private details", asyn
   ]);
 
   await openArchived(page);
-  const list = page.locator("ol");
-  await expect(list.locator("li")).toHaveCount(3);
-  await expect(list.locator("li span")).toHaveText(["Newest archived", "Tie z", "Tie a"]);
-  await expect(list).not.toContainText("Private body");
+  await expect(page.locator("main.ml-0")).toBeVisible();
+  await expect(page.locator(".sidebar__item").filter({ hasText: "Archived" })).toHaveClass(
+    /is-current/,
+  );
+  const list = page.locator(".note-list");
+  await expect(list.locator(".note-row")).toHaveCount(3);
+  await expect(list.locator(".note-row__title")).toHaveText(["Newest archived", "Tie z", "Tie a"]);
+  await expect(list).not.toContainText("Private body must not be shown");
+  await expect(list).not.toContainText("Another private body");
+  await expect(list).not.toContainText("Do not expose this body");
   await expect(list).not.toContainText("Active hidden");
   await expect(list).not.toContainText("Other user's note");
-  await expect(list.getByRole("button", { name: "Restore" })).toHaveCount(3);
+  await expect(list.locator(".note-row__actions .button--quiet")).toHaveCount(3);
 });
 
 test("restores an archived note and removes it from the view", async ({ page }) => {
@@ -96,7 +103,7 @@ test("restores an archived note and removes it from the view", async ({ page }) 
   });
 
   await openArchived(page);
-  const row = page.locator("li").filter({ hasText: "Restore me" });
+  const row = page.locator(".note-row").filter({ hasText: "Restore me" });
   const restoreButton = row.locator("button");
   await page.route("**/api/trpc/notes.restore", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -114,5 +121,5 @@ test("restores an archived note and removes it from the view", async ({ page }) 
 test("shows a create-first-note hint when there are no archived notes", async ({ page }) => {
   await signUp(page);
   await openArchived(page);
-  await expect(page.getByText("Create your first note to get started.")).toBeVisible();
+  await expect(page.getByText("Nothing archived yet")).toBeVisible();
 });

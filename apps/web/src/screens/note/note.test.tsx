@@ -226,9 +226,13 @@ describe("NotePage", () => {
     render(<NotePage id="note-1" />);
     await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(screen.getByRole("heading", { name: "Delete confirmation" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Delete this note permanently?" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByRole("heading", { name: "Delete confirmation" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Delete this note permanently?" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("Private title")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -246,7 +250,7 @@ describe("NotePage", () => {
     render(<NotePage id="note-1" />);
     await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("note not found"));
     expect(screen.getByDisplayValue("Private title")).toBeInTheDocument();
   });
