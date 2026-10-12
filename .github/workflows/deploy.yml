@@ -1,0 +1,50 @@
+# Deploy: every push to main (the release branch — issues land on dev, dev is promoted to main)
+# rebuilds and restarts the app on the deploy machine, then proves it answers.
+# Runs ON the deploy machine (a self-hosted runner with Docker), so nothing reaches in over SSH.
+# Run it by hand from the Actions tab too (workflow_dispatch).
+#
+# Repo secret: DB_PASSWORD. Optional repo variable APP_PORT (default 80).
+# The runner's user needs Docker access (the docker group).
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits rather than racing the running one.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 20
+    env:
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      APP_PORT: ${{ vars.APP_PORT || '80' }}
+      APP: ${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start
+        run: docker compose -p "$APP" up -d --build --remove-orphans
+
+      - name: Answers on the network
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/api/trpc/health.ping" >/dev/null \
+              && curl -fsS "http://127.0.0.1:${APP_PORT}/" >/dev/null; then
+              echo "deployed: the app and its api answer on :${APP_PORT}"
+              exit 0
+            fi
+            sleep 3
+          done
+          docker compose -p "$APP" logs --tail 80
+          exit 1
+
+      - name: Clear old images
+        if: always()
+        run: docker image prune -f

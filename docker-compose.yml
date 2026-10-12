@@ -1,0 +1,43 @@
+# The whole app on one machine: Postgres, the api, and the web front door.
+#   DB_PASSWORD=… docker compose up -d --build
+# DB_PASSWORD comes from the environment (the deploy workflow passes the repo secret) — it is
+# never committed. APP_PORT is where the app answers (default 80).
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      POSTGRES_DB: app
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: { context: ., target: api }
+    restart: unless-stopped
+    environment:
+      DB_IP: db
+      DB_PORT: 5432
+      DB_USER: app
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      DB_DATABASE: app
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: { context: ., target: web }
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    depends_on:
+      - api
+
+volumes:
+  db-data:

@@ -8,6 +8,9 @@ import { appRouter } from "./trpc/app.router";
 
 export function createApp() {
   const app = express();
+  // Behind the nginx front door: req.secure follows X-Forwarded-Proto, so the session cookie
+  // is Secure exactly when the browser reached us over HTTPS.
+  app.set("trust proxy", true);
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());

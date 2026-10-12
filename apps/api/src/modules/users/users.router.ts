@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { env } from "../../env";
 import { publicProcedure, router } from "../../trpc/trpc";
 import { createUsersService, sessionMaxAge } from "./users.service";
 import { signInInput, signUpInput } from "./users.types";
@@ -14,7 +13,7 @@ export const usersRouter = router({
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure: env.NODE_ENV === "production",
+      secure: ctx.req?.secure ?? false,
     });
     return { id: user.id, email: user.email };
   }),
@@ -27,7 +26,7 @@ export const usersRouter = router({
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure: env.NODE_ENV === "production",
+      secure: ctx.req?.secure ?? false,
     });
     return { id: user.id, email: user.email };
   }),
