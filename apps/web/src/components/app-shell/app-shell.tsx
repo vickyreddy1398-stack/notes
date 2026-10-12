@@ -1,0 +1,67 @@
+import { useEffect, useState } from "react";
+import { trpc } from "../../lib/trpc";
+
+type Props = { email: string; children: React.ReactNode };
+
+type Tag = { id: string; name: string };
+
+export function AppShell({ email, children }: Props) {
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    trpc.tags
+      .list()
+      .then(setTags)
+      .catch(() => undefined);
+  }, []);
+
+  return (
+    <>
+      <header className="topbar">
+        <button
+          className="topbar__menu button button--quiet"
+          type="button"
+          aria-label="Open navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          ☰
+        </button>
+        <a className="topbar__brand" href="/">
+          <span className="topbar__mark">N</span>
+          <span>Notes</span>
+        </a>
+        <div className="topbar__actions">
+          <button className="button button--quiet" type="button" aria-label="Switch theme">
+            ☼ <span className="hidden sm:inline">Theme</span>
+          </button>
+          <span className="topbar__user">{email}</span>
+        </div>
+      </header>
+      <aside className={`sidebar${menuOpen ? " is-open" : ""}`}>
+        <section className="sidebar__section">
+          <div className="sidebar__label">Workspace</div>
+          <nav className="sidebar__nav" aria-label="Workspace">
+            <a className="sidebar__item is-current" aria-current="page" href="/">
+              ▤ <span>Notes</span>
+            </a>
+            <a className="sidebar__item" href="/archived">
+              ▱ <span>Archived</span>
+            </a>
+          </nav>
+        </section>
+        <section className="sidebar__section">
+          <div className="sidebar__label">Tags</div>
+          <nav className="sidebar__nav">
+            {tags.map((tag) => (
+              <a className="sidebar__tag" href={`/?tag=${tag.id}`} key={tag.id}>
+                {tag.name}
+              </a>
+            ))}
+          </nav>
+        </section>
+      </aside>
+      {children}
+    </>
+  );
+}

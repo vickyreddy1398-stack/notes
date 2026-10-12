@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AppShell } from "../../components/app-shell/app-shell";
 import { trpc } from "../../lib/trpc";
 import { NotesPage } from "../notes/notes.page";
 
@@ -28,7 +29,12 @@ export function SignUpPage() {
     }
   }
 
-  if (user) return <NotesPage email={user.email} />;
+  if (user)
+    return (
+      <AppShell email={user.email}>
+        <NotesPage email={user.email} />
+      </AppShell>
+    );
   return (
     <main>
       <h1>Sign up</h1>

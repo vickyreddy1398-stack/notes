@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { signInInput } from "../../../../api/src/modules/users/users.types";
+import { AppShell } from "../../components/app-shell/app-shell";
 import { trpc } from "../../lib/trpc";
 import { NotesPage } from "../notes/notes.page";
 
@@ -33,7 +34,12 @@ export function SignInPage() {
     }
   }
 
-  if (user) return <NotesPage email={user.email} />;
+  if (user)
+    return (
+      <AppShell email={user.email}>
+        <NotesPage email={user.email} />
+      </AppShell>
+    );
   return (
     <main>
       <h1>Sign in</h1>
