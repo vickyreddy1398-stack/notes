@@ -23,6 +23,11 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
   expect(noteUrl).toMatch(/^\/notes\//);
   await noteLink.click();
   await expect(page.getByRole("heading", { name: "Edit note" })).toBeVisible();
+  await expect(page.locator("main.note-editor")).toBeVisible();
+  await expect(page.locator(".note-editor__header")).toBeVisible();
+  await expect(page.locator(".note-editor__actions .button")).toHaveCount(4);
+  await expect(page.locator(".field__control")).toHaveCount(3);
+  await expect(page.locator(".field__control--body")).toBeVisible();
   await expect(page.getByLabel("Title")).toHaveValue("Private editor title");
   await expect(page.getByLabel("Body")).toHaveValue("Private editor body");
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
@@ -60,7 +65,12 @@ test("owner opens a note in the dedicated editor and another user cannot see it"
   await page.getByLabel("Title").fill("Discarded editor title");
   await page.getByLabel("Body").fill("Discarded editor body");
   await page.getByRole("link", { name: "Cancel" }).click();
-  await expect(page.getByRole("heading", { name: "Discard changes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Discard changes?" })).toBeVisible();
+  await expect(page.locator(".modal")).toHaveAttribute("role", "dialog");
+  await expect(page.locator(".modal__dialog")).toBeVisible();
+  await expect(page.locator(".modal__actions")).toBeVisible();
+  await expect(page.locator(".modal .button--secondary")).toHaveText("Keep editing");
+  await expect(page.locator(".modal .button--danger")).toHaveText("Discard");
   await page.getByRole("button", { name: "Stay" }).click();
   await expect(page.getByLabel("Title")).toHaveValue("Discarded editor title");
   await expect(page.getByLabel("Body")).toHaveValue("Discarded editor body");

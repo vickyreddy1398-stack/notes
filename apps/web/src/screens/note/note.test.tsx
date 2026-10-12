@@ -127,9 +127,15 @@ describe("NotePage", () => {
     );
     render(<NotePage id="note-1" />);
     await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    expect(screen.getByRole("main")).toHaveClass("note-editor");
+    expect(screen.getByLabelText("Title")).toHaveClass("field__control");
+    expect(screen.getByLabelText("Body")).toHaveClass("field__control--body");
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Changed title" } });
     fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
-    expect(screen.getByRole("heading", { name: "Discard changes" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveClass("modal");
+    expect(screen.getByRole("dialog").querySelector(".modal__dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog").querySelector(".modal__actions")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Discard changes?" })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Stay" }));
     expect(screen.queryByRole("heading", { name: "Discard changes" })).not.toBeInTheDocument();
@@ -171,6 +177,19 @@ describe("NotePage", () => {
     fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
     expect(screen.queryByRole("heading", { name: "Discard changes" })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders the approved body-field character limit hint", async () => {
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      response({
+        id: "note-1",
+        title: "Private title",
+        body: "Private body",
+      }) as Promise<Response>,
+    );
+    render(<NotePage id="note-1" />);
+    await waitFor(() => expect(screen.getByDisplayValue("Private title")).toBeInTheDocument());
+    expect(screen.getByText("Plain text only · 50,000 characters maximum")).toBeInTheDocument();
   });
 
   it("loads a note into editable fields with Save and Cancel", async () => {
