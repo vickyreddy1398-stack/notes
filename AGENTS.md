@@ -72,6 +72,10 @@ same code and message. Add a new case to `lib/errors.ts`; never translate errors
 - **Signed-in work uses `protectedProcedure`.** It rejects a signed-out caller with
   `UNAUTHORIZED` and gives you `ctx.userId` as a string. The session cookie is resolved into
   `ctx.userId` once, in `app.ts`'s `createContext` — never read cookies in a router.
+- **A cookie is `Secure` when the request came over HTTPS — `secure: ctx.req.secure`, never
+  `NODE_ENV === "production"`.** The app is deployed behind nginx and is reached over plain HTTP
+  at the machine's IP; a Secure cookie there is dropped by the browser and nobody can sign in.
+  `app.ts` sets `trust proxy`, so `req.secure` follows the front door.
 - **Scope every query by the owner.** Every read and write of user-owned data filters on the
   signed-in user's id **in the query itself**. Another user's row must behave **exactly** like
   a row that does not exist — the same `notFound(...)`, the same code, the same message — and a
@@ -87,6 +91,25 @@ same code and message. Add a new case to `lib/errors.ts`; never translate errors
   `cwd` (`cwd: "../api"`).
 - **Discrete env vars** `DB_IP DB_PORT DB_USER DB_PASSWORD DB_DATABASE`, read only in `env.ts`.
 - **kebab-case files** named `name.whatiam.ts`. No `utils/` folder — shared code goes in `lib/`.
+
+## 3b · Design — the approved screens are the look, not a suggestion
+
+The Design stage's output lives in `design/` (see `design/README.md`): `design.css` (the design
+system — tokens and component classes, loaded app-wide with Tailwind through
+`apps/web/src/styles.css`), `decisions.md`, `components.md`, and every approved screen as
+`design/screens/<screen>.html`. An issue whose `### Design` block names a screen is held to it:
+
+- **Build the screen to match its approved file** — the same structure (landmarks, sections,
+  order) and the same classes: the design-system classes (`topbar`, `note-card`,
+  `button button--quiet`, …) and the Tailwind utilities, written as `className`. The approved
+  file's sample text and data become the real data; its `data-screen` links become real routes.
+- **Behaviour comes from the issue; the look comes from the design.** Where the issue needs an
+  element the approved screen does not show (an error message, an empty state), compose it from
+  the design's existing classes and `components.md` — never new colours, fonts or one-off CSS.
+- **Never edit `design/`** and never add a stylesheet that overrides it. If the design truly
+  cannot express what the issue needs, say so in your notes rather than restyling.
+- Build only the part of the screen your issue owns; later issues add the rest to the same
+  structure.
 
 ## 4 · Tests — real, first, and proving every "Done when"
 
@@ -113,7 +136,9 @@ The advisor approves a plan that names, for this issue:
    when user data is read or written;
 3. which `AppError`s the service throws, and that the router stays thin;
 4. any schema change and that its migration is generated;
-5. how a browser test reaches the screen (sign up through the UI) when the issue is visual.
+5. how a browser test reaches the screen (sign up through the UI) when the issue is visual;
+6. for every screen in the issue's `### Design` block: its approved file, and how that file's
+   markup and classes map onto the page component(s) this issue writes (§3b).
 
 **Advisor:** judge the plan against the issue and this file only. In your first ruling, list
 **every** change you require — you will not get to add new requirements later. In a second
