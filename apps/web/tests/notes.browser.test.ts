@@ -12,6 +12,44 @@ async function signUp(page: import("@playwright/test").Page) {
   await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
 }
 
+test("renders the approved shell and note-row structure", async ({ page }) => {
+  await signUp(page);
+  await expect(page.locator("header.topbar")).toBeVisible();
+  await expect(page.locator("aside.sidebar")).toBeVisible();
+  await expect(page.locator("main.ml-0.md\\:ml-60")).toBeVisible();
+  await page.getByLabel("Title").fill("Design review note");
+  await page.getByRole("button", { name: "Save note" }).click();
+  const list = page.locator("section.note-list");
+  await expect(list).toBeVisible();
+  await expect(list.locator("article.note-row")).toHaveCount(1);
+});
+
+test("sidebar Archived uses the archived route and sidebar tags filter notes", async ({ page }) => {
+  await signUp(page);
+  const ownerId = await page.evaluate(async () => {
+    const response = await fetch("http://127.0.0.1:3001/api/trpc/users.currentUser", {
+      credentials: "include",
+    });
+    return ((await response.json()) as { result: { data: { id: string } } }).result.data.id;
+  });
+  const suffix = `${ownerId}-${Date.now()}`;
+  const [tag] = await db
+    .insert(tags)
+    .values({ id: `browser-sidebar-tag-${suffix}`, ownerId, name: "Sidebar" })
+    .returning();
+  const noteId = `browser-sidebar-note-${suffix}`;
+  await db.insert(notes).values({ id: noteId, ownerId, title: "Sidebar filtered note" });
+  await db.insert(noteTags).values({ noteId, tagId: tag.id });
+
+  await page.reload();
+  await page.locator("aside.sidebar").getByRole("link", { name: "Sidebar" }).click();
+  await expect(page).toHaveURL(`/?tag=${tag.id}`);
+  await expect(page.locator("article.note-row")).toContainText("Sidebar filtered note");
+  await page.locator("aside.sidebar").getByRole("link", { name: "Archived" }).click();
+  await expect(page).toHaveURL("/archived");
+  await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible();
+});
+
 test("shows a create-first-note hint for empty active, search, and tag results", async ({
   page,
 }) => {
