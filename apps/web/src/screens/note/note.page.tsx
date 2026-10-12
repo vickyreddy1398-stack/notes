@@ -35,6 +35,8 @@ export function NotePage({ id }: Props) {
   const [saved, setSaved] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [createdAt, setCreatedAt] = useState("");
+  const [updatedAt, setUpdatedAt] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -49,6 +51,8 @@ export function NotePage({ id }: Props) {
         setTags(normalizedTags);
         setPinned(note.pinned);
         setArchived(note.archived);
+        setCreatedAt(note.createdAt ?? "");
+        setUpdatedAt(note.updatedAt ?? "");
         setLoaded(true);
       })
       .catch((cause) => {
@@ -143,99 +147,170 @@ export function NotePage({ id }: Props) {
   const dirty =
     title !== original.title || body !== original.body || normalizeTagDraft(tags) !== original.tags;
 
+  const updatedLabel = updatedAt
+    ? `Updated ${new Date(updatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
+    : "Updated recently";
+  const createdLabel = createdAt
+    ? `Created ${new Date(createdAt).toLocaleDateString(undefined, { dateStyle: "long" })}`
+    : "";
+
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
-      <h1>Edit note</h1>
-      {error && <p role="alert">{error}</p>}
-      <p>
-        <button type="button" onClick={() => void changePin(!pinned)} disabled={pinning}>
-          {pinning ? "Saving…" : pinned ? "Unpin" : "Pin"}
-        </button>{" "}
-        <button type="button" onClick={() => void changeArchive(!archived)} disabled={archiving}>
-          {archiving ? "Saving…" : archived ? "Restore" : "Archive"}
-        </button>
-      </p>
+    <main className="note-editor md:ml-60" aria-label="Edit note">
       <form
+        id="note-editor-form"
         onSubmit={(event) => {
           event.preventDefault();
           void saveNote();
         }}
       >
-        <label htmlFor="note-editor-title">Title</label>
-        <input
-          id="note-editor-title"
-          name="title"
-          value={title}
-          maxLength={NOTE_TITLE_MAX}
-          required
-          onChange={(event) => {
-            setTitle(event.target.value);
-            setSaved(false);
-          }}
-          style={{ display: "block", maxWidth: "100%", width: "100%" }}
-        />
-        <label htmlFor="note-editor-tags">Tags</label>
-        <input
-          id="note-editor-tags"
-          name="tags"
-          value={tags}
-          onChange={(event) => {
-            setTags(event.target.value);
-            setSaved(false);
-          }}
-          style={{ display: "block", maxWidth: "100%", width: "100%" }}
-        />
-        <label htmlFor="note-editor-body">Body</label>
-        <textarea
-          id="note-editor-body"
-          name="body"
-          value={body}
-          maxLength={NOTE_BODY_MAX}
-          onChange={(event) => {
-            setBody(event.target.value);
-            setSaved(false);
-          }}
-          style={{ display: "block", maxWidth: "100%", width: "100%" }}
-        />
-        <button type="submit">Save</button>
-        <a
-          href="/"
-          onClick={(event) => {
-            if (dirty) {
-              event.preventDefault();
-              setConfirmingDiscard(true);
-            }
-          }}
-          style={{ marginLeft: "0.75rem" }}
-        >
-          Cancel
-        </a>
+        <div className="note-editor__header">
+          <div>
+            <h1>Edit note</h1>
+            <p className="text-[var(--color-text-muted)]">Changes are saved explicitly.</p>
+          </div>
+          <div className="note-editor__actions">
+            <button
+              className="button button--quiet"
+              type="button"
+              onClick={() => void changePin(!pinned)}
+              disabled={pinning}
+            >
+              {pinning ? "Saving…" : pinned ? "Unpin" : "Pin"}
+            </button>
+            <button
+              className="button button--quiet"
+              type="button"
+              onClick={() => void changeArchive(!archived)}
+              disabled={archiving}
+            >
+              {archiving ? "Saving…" : archived ? "Restore" : "Archive"}
+            </button>
+            <a
+              className="button button--secondary"
+              href="/"
+              onClick={(event) => {
+                if (dirty) {
+                  event.preventDefault();
+                  setConfirmingDiscard(true);
+                }
+              }}
+            >
+              Cancel
+            </a>
+            <button className="button" type="submit">
+              Save
+            </button>
+          </div>
+        </div>
+        {error && <p role="alert">{error}</p>}
+        <label className="field" htmlFor="note-editor-title">
+          <span className="field__label">Title</span>
+          <input
+            className="field__control"
+            id="note-editor-title"
+            aria-label="Title"
+            name="title"
+            value={title}
+            maxLength={NOTE_TITLE_MAX}
+            required
+            onChange={(event) => {
+              setTitle(event.target.value);
+              setSaved(false);
+            }}
+          />
+        </label>
+        <label className="field" htmlFor="note-editor-body">
+          <span className="field__label">Body</span>
+          <textarea
+            className="field__control field__control--body"
+            id="note-editor-body"
+            aria-label="Body"
+            name="body"
+            value={body}
+            maxLength={NOTE_BODY_MAX}
+            onChange={(event) => {
+              setBody(event.target.value);
+              setSaved(false);
+            }}
+          />
+          <span className="field__hint">Plain text only · 50,000 characters maximum</span>
+        </label>
+        <label className="field" htmlFor="note-editor-tags">
+          <span className="field__label">Tags</span>
+          <input
+            className="field__control"
+            id="note-editor-tags"
+            aria-label="Tags"
+            name="tags"
+            value={tags}
+            placeholder="ideas, planning"
+            onChange={(event) => {
+              setTags(event.target.value);
+              setSaved(false);
+            }}
+          />
+          <span className="field__hint">
+            Separate tags with commas. Tags are saved in lowercase and de-duplicated.
+          </span>
+        </label>
       </form>
+      <div className="note-editor__footer">
+        <div className="flex flex-col gap-1">
+          <time className="text-[var(--color-text-muted)]" dateTime={updatedAt || undefined}>
+            {updatedLabel}
+          </time>
+          {createdLabel && (
+            <span className="text-xs text-[var(--color-text-subtle)]">{createdLabel}</span>
+          )}
+        </div>
+        {!confirmingDelete ? (
+          <button
+            className="button button--danger"
+            type="button"
+            aria-label="Delete"
+            onClick={() => setConfirmingDelete(true)}
+          >
+            Delete permanently
+          </button>
+        ) : (
+          <section aria-labelledby="delete-confirmation-heading">
+            <h2 id="delete-confirmation-heading">Delete confirmation</h2>
+            <p>This note will be permanently deleted.</p>
+            <button type="button" onClick={() => void deleteNote()} disabled={deleting}>
+              {deleting ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button type="button" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+              Cancel
+            </button>
+          </section>
+        )}
+      </div>
       {confirmingDiscard && (
-        <section aria-labelledby="discard-confirmation-heading">
-          <h2 id="discard-confirmation-heading">Discard changes</h2>
-          <p>Your unsaved changes will be lost.</p>
-          <a href="/">Discard changes</a>
-          <button type="button" onClick={() => setConfirmingDiscard(false)}>
-            Stay
-          </button>
-        </section>
-      )}
-      {!confirmingDelete ? (
-        <button type="button" onClick={() => setConfirmingDelete(true)}>
-          Delete
-        </button>
-      ) : (
-        <section aria-labelledby="delete-confirmation-heading">
-          <h2 id="delete-confirmation-heading">Delete confirmation</h2>
-          <p>This note will be permanently deleted.</p>
-          <button type="button" onClick={() => void deleteNote()} disabled={deleting}>
-            {deleting ? "Deleting…" : "Confirm Delete"}
-          </button>
-          <button type="button" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
-            Cancel
-          </button>
-        </section>
+        <div
+          className="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="discard-title"
+          aria-describedby="discard-description"
+        >
+          <section className="modal__dialog">
+            <h2 id="discard-title">Discard changes?</h2>
+            <p id="discard-description">Your unsaved edits to “{title}” will be lost.</p>
+            <div className="modal__actions">
+              <button
+                className="button button--secondary"
+                type="button"
+                aria-label="Stay"
+                onClick={() => setConfirmingDiscard(false)}
+              >
+                Keep editing
+              </button>
+              <a className="button button--danger" href="/" aria-label="Discard changes">
+                Discard
+              </a>
+            </div>
+          </section>
+        </div>
       )}
       {saved && <p role="status">Changes saved.</p>}
     </main>
