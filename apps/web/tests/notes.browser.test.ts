@@ -9,12 +9,15 @@ async function signUp(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill(`notes-list-${Date.now()}@example.com`);
   await page.getByLabel("Password").fill("a password");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Notes", exact: true })).toBeVisible();
 }
 
-test("renders the approved shell and note-row structure", async ({ page }) => {
+test("renders the approved shell without pre-design leftovers", async ({ page }) => {
   await signUp(page);
   await expect(page.locator("header.topbar")).toBeVisible();
+  await expect(page.getByText(/Signed in as/)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Quick note" })).toHaveCount(0);
+  await expect(page.locator("main").getByRole("button", { name: "Archived" })).toHaveCount(0);
   await expect(page.locator("aside.sidebar")).toBeVisible();
   await expect(page.locator("main.ml-0.md\\:ml-60")).toBeVisible();
   await page.getByLabel("Title").fill("Design review note");
@@ -22,6 +25,17 @@ test("renders the approved shell and note-row structure", async ({ page }) => {
   const list = page.locator("section.note-list");
   await expect(list).toBeVisible();
   await expect(list.locator("article.note-row")).toHaveCount(1);
+});
+
+test("root keeps signed-out visitors on Sign up and restores Notes after reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+  await signUp(page);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your account" })).toHaveCount(0);
 });
 
 test("sidebar Archived uses the archived route and sidebar tags filter notes", async ({ page }) => {
@@ -177,10 +191,10 @@ test("keeps search and tag filtering independent and keeps archived unfiltered",
   await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
   await expect(page.getByLabel("Search notes")).toHaveValue("");
 
-  await page.getByRole("button", { name: "Archived" }).click();
+  await page.locator("aside.sidebar").getByRole("link", { name: "Archived" }).click();
   await expect(page.getByRole("heading", { name: "Archived", exact: true })).toBeVisible();
   await expect(page.getByText("Archived tagged note")).toBeVisible();
-  await page.getByRole("button", { name: "Notes" }).click();
+  await page.locator("aside.sidebar").getByRole("link", { name: "Notes" }).click();
   await expect(page.getByLabel("Filter by tag")).toHaveValue(tag.id);
   await expect(page.getByLabel("Search notes")).toHaveValue("");
 });
@@ -203,6 +217,8 @@ test("removes unused tags after replacing tags and permanently deleting a note",
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await page.getByRole("link", { name: "Cancel" }).click();
+  await expect(page.getByLabel("Filter by tag")).toContainText("orphan");
+  await expect(page.getByLabel("Filter by tag")).toContainText("shared");
 
   await createNote("Second tagged note");
   await page.getByRole("link", { name: "Second tagged note" }).click();
@@ -210,8 +226,6 @@ test("removes unused tags after replacing tags and permanently deleting a note",
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await page.getByRole("link", { name: "Cancel" }).click();
-  await page.reload();
-  await expect(page.getByLabel("Filter by tag")).toContainText("orphan");
   await expect(page.getByLabel("Filter by tag")).toContainText("shared");
 
   await page.getByRole("link", { name: "First tagged note" }).click();
@@ -219,7 +233,6 @@ test("removes unused tags after replacing tags and permanently deleting a note",
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Changes saved.");
   await page.getByRole("link", { name: "Cancel" }).click();
-  await page.reload();
   await expect(page.getByLabel("Filter by tag")).not.toContainText("orphan");
   await expect(page.getByLabel("Filter by tag")).toContainText("shared");
 
@@ -232,7 +245,6 @@ test("removes unused tags after replacing tags and permanently deleting a note",
   await expect(page.getByRole("heading", { name: "Delete this note permanently?" })).toBeVisible();
   await page.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL("/");
-  await page.reload();
   await expect(page.getByLabel("Filter by tag")).not.toContainText("delete-only");
   await expect(page.getByLabel("Filter by tag")).toContainText("shared");
 });

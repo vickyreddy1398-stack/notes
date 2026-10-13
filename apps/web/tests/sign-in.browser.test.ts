@@ -39,7 +39,7 @@ test("signs in and arrives at the private Notes workspace", async ({ page, conte
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  await expect(page.locator(".topbar__user").filter({ hasText: email })).toBeVisible();
 
   await context.clearCookies();
   await page.goto("/sign-in");
@@ -47,7 +47,7 @@ test("signs in and arrives at the private Notes workspace", async ({ page, conte
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Notes" })).toBeVisible();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  await expect(page.locator(".topbar__user").filter({ hasText: email })).toBeVisible();
 
   const session = (await context.cookies()).find((cookie) => cookie.name === "session");
   expect(session?.httpOnly).toBe(true);

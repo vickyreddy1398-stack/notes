@@ -7,7 +7,13 @@ import { NotesPage } from "./screens/notes/notes.page";
 import { SignInPage } from "./screens/sign-in/sign-in.page";
 import { SignUpPage } from "./screens/sign-up/sign-up.page";
 
-function SignedInWorkspace({ archived = false }: { archived?: boolean }) {
+function SignedInWorkspace({
+  archived = false,
+  fallback = "signin",
+}: {
+  archived?: boolean;
+  fallback?: "signin" | "signup";
+}) {
   const [email, setEmail] = useState<string | null>(null);
   useEffect(() => {
     trpc.users
@@ -21,7 +27,7 @@ function SignedInWorkspace({ archived = false }: { archived?: boolean }) {
         <p>Loading…</p>
       </main>
     );
-  if (!email) return <SignInPage />;
+  if (!email) return fallback === "signup" ? <SignUpPage /> : <SignInPage />;
   return (
     <AppShell email={email} activeScreen={archived ? "archived" : "notes"}>
       {archived ? (
@@ -64,5 +70,6 @@ export function App() {
   if (noteMatch) return <SignedInNote id={decodeURIComponent(noteMatch[1])} />;
   if (window.location.pathname === "/archived") return <SignedInWorkspace archived />;
   if (window.location.pathname === "/sign-in") return <SignInPage />;
+  if (window.location.pathname === "/") return <SignedInWorkspace fallback="signup" />;
   return <SignUpPage />;
 }

@@ -4,6 +4,7 @@ import {
   NOTE_TITLE_MAX,
   updateNoteInput,
 } from "../../../../api/src/modules/notes/notes.types";
+import { useTagsRefresh } from "../../components/app-shell/app-shell";
 import { trpc } from "../../lib/trpc";
 
 type Props = { id: string };
@@ -37,6 +38,7 @@ export function NotePage({ id }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
   const [updatedAt, setUpdatedAt] = useState("");
+  const refreshTags = useTagsRefresh();
 
   useEffect(() => {
     let active = true;
@@ -97,6 +99,7 @@ export function NotePage({ id }: Props) {
       const normalizedTags = parsed.data.tags.join(", ");
       setOriginal({ title: note.title, body: note.body ?? "", tags: normalizedTags });
       setTags(normalizedTags);
+      await refreshTags();
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save note");
@@ -136,6 +139,7 @@ export function NotePage({ id }: Props) {
     setError("");
     try {
       await trpc.notes.delete({ id });
+      await refreshTags();
       window.location.href = "/";
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to delete note");

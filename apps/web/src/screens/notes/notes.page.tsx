@@ -5,6 +5,7 @@ import {
   NOTE_BODY_MAX,
   NOTE_TITLE_MAX,
 } from "../../../../api/src/modules/notes/notes.types";
+import { useTagsRefresh } from "../../components/app-shell/app-shell";
 import { trpc } from "../../lib/trpc";
 import { ArchivedPage } from "../archived/archived.page";
 
@@ -16,11 +17,14 @@ function updatedLabel(value: string) {
   return `Updated ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 }
 
-export function NotesPage({ email }: Props) {
+export function NotesPage(_props: Props) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
   const [selectedTagId, setSelectedTagId] = useState(
-    () => new URLSearchParams(window.location.search).get("tag") ?? "",
+    () =>
+      new URLSearchParams(window.location.search).get("tag") ??
+      window.sessionStorage.getItem("notes.selectedTag") ??
+      "",
   );
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
@@ -34,6 +38,7 @@ export function NotesPage({ email }: Props) {
   const [archivedView, setArchivedView] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const latestLoad = useRef(0);
+  const refreshTags = useTagsRefresh();
 
   const loadNotes = useCallback(
     async (searchOverride = search) => {
@@ -82,7 +87,8 @@ export function NotesPage({ email }: Props) {
     setSaving(true);
     try {
       await trpc.notes.create({ ...parsed.data, tags: tagDraft });
-      await loadNotes();
+      const [, refreshedTags] = await Promise.all([loadNotes(), refreshTags()]);
+      if (refreshedTags) setTags(refreshedTags);
       setTitle("");
       setBody("");
       setTagDraft("");
@@ -108,6 +114,9 @@ export function NotesPage({ email }: Props) {
     setSelectedTagId(tagId);
     setSearchDraft("");
     setSearch("");
+    if (tagId) window.sessionStorage.setItem("notes.selectedTag", tagId);
+    else window.sessionStorage.removeItem("notes.selectedTag");
+    window.history.replaceState(null, "", tagId ? `/?tag=${encodeURIComponent(tagId)}` : "/");
   }
   async function noteAction(note: Note, action: "pin" | "unpin" | "archive") {
     setBusyId(note.id);
@@ -142,15 +151,6 @@ export function NotesPage({ email }: Props) {
             {notes.length} active notes
           </span>
         </div>
-        <p>Signed in as {email}</p>
-        <button
-          className="button button--quiet"
-          type="button"
-          onClick={() => setArchivedView(true)}
-        >
-          Archived
-        </button>
-        <h2>Quick note</h2>
         <form className="quick-capture" aria-label="Create a new note" onSubmit={submit}>
           <div className="quick-capture__row">
             <span className="mt-1 text-lg text-[var(--color-accent)]" aria-hidden="true">
@@ -272,7 +272,6 @@ export function NotesPage({ email }: Props) {
                         {tag}
                       </span>
                     ))}
-                    {note.tags && note.tags.length > 0 && <span>Tags: {note.tags.join(", ")}</span>}
                     <time dateTime={note.updatedAt}>{updatedLabel(note.updatedAt)}</time>
                     {note.pinned && (
                       <span role="img" aria-label="Pinned">

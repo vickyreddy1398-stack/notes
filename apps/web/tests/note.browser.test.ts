@@ -5,7 +5,7 @@ async function signUp(page: Page, prefix: string) {
   await page.getByLabel("Email").fill(`${prefix}-${Date.now()}@example.com`);
   await page.getByLabel("Password").fill("a password");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Notes", exact: true })).toBeVisible();
 }
 
 test("owner opens a note in the dedicated editor and another user cannot see it", async ({
@@ -118,5 +118,5 @@ test("renders and completes the delete confirmation", async ({ page }) => {
   await page.getByRole("button", { name: "Delete" }).click();
   await dialog.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL("http://127.0.0.1:5173/");
-  await expect(page.getByRole("heading", { name: "Quick note" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Notes", exact: true })).toBeVisible();
 });
