@@ -1,20 +1,37 @@
-import { useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { trpc } from "../../lib/trpc";
 
 type Props = { email: string; activeScreen: "notes" | "archived"; children: React.ReactNode };
 
 type Tag = { id: string; name: string };
 
+type TagsContextValue = { refreshTags: () => Promise<Tag[] | undefined> };
+const TagsContext = createContext<TagsContextValue | null>(null);
+
+export function useTagsRefresh() {
+  return useContext(TagsContext)?.refreshTags ?? (async () => undefined);
+}
+
 export function AppShell({ email, activeScreen, children }: Props) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const latestTagRefresh = useRef(0);
+
+  const refreshTags = useCallback(async () => {
+    const requestId = ++latestTagRefresh.current;
+    try {
+      const loaded = await trpc.tags.list();
+      if (requestId === latestTagRefresh.current) setTags(loaded);
+      return loaded;
+    } catch {
+      // The existing tag list remains usable when a refresh fails.
+      return undefined;
+    }
+  }, []);
 
   useEffect(() => {
-    trpc.tags
-      .list()
-      .then(setTags)
-      .catch(() => undefined);
-  }, []);
+    void refreshTags();
+  }, [refreshTags]);
 
   return (
     <>
@@ -45,7 +62,7 @@ export function AppShell({ email, activeScreen, children }: Props) {
             <a
               className={`sidebar__item${activeScreen === "notes" ? " is-current" : ""}`}
               aria-current={activeScreen === "notes" ? "page" : undefined}
-              href="/"
+              href={`/${window.location.search}`}
             >
               ▤ <span>Notes</span>
             </a>
@@ -69,7 +86,7 @@ export function AppShell({ email, activeScreen, children }: Props) {
           </nav>
         </section>
       </aside>
-      {children}
+      <TagsContext.Provider value={{ refreshTags }}>{children}</TagsContext.Provider>
     </>
   );
 }

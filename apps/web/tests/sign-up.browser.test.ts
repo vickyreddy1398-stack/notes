@@ -31,7 +31,7 @@ test("creates an account and remains authenticated after reload", async ({ page,
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("a password");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  await expect(page.locator(".topbar__user").filter({ hasText: email })).toBeVisible();
 
   const cookies = await context.cookies();
   const session = cookies.find((cookie) => cookie.name === "session");
@@ -42,5 +42,5 @@ test("creates an account and remains authenticated after reload", async ({ page,
   expect(session?.expires).toBeGreaterThan(Date.now() / 1000 + 6 * 24 * 60 * 60);
 
   await page.reload();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  await expect(page.locator(".topbar__user").filter({ hasText: email })).toBeVisible();
 });
