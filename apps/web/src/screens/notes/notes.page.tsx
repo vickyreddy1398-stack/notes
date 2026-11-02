@@ -6,6 +6,7 @@ import {
   NOTE_TITLE_MAX,
 } from "../../../../api/src/modules/notes/notes.types";
 import { useTagsRefresh } from "../../components/app-shell/app-shell";
+import { appPath } from "../../lib/base";
 import { trpc } from "../../lib/trpc";
 import { ArchivedPage } from "../archived/archived.page";
 
@@ -116,7 +117,11 @@ export function NotesPage(_props: Props) {
     setSearch("");
     if (tagId) window.sessionStorage.setItem("notes.selectedTag", tagId);
     else window.sessionStorage.removeItem("notes.selectedTag");
-    window.history.replaceState(null, "", tagId ? `/?tag=${encodeURIComponent(tagId)}` : "/");
+    window.history.replaceState(
+      null,
+      "",
+      appPath(tagId ? `/?tag=${encodeURIComponent(tagId)}` : "/"),
+    );
   }
   async function noteAction(note: Note, action: "pin" | "unpin" | "archive") {
     setBusyId(note.id);
@@ -262,7 +267,7 @@ export function NotesPage(_props: Props) {
               // biome-ignore lint/a11y/useSemanticElements: the approved design requires article cards
               <article className="note-row" key={note.id} role="listitem">
                 <div className="note-row__content">
-                  <a href={`/notes/${encodeURIComponent(note.id)}`} className="block">
+                  <a href={appPath(`/notes/${encodeURIComponent(note.id)}`)} className="block">
                     <h3 className="note-row__title">{note.title}</h3>
                     {note.body && <p className="note-row__preview">{note.body}</p>}
                   </a>
@@ -301,7 +306,7 @@ export function NotesPage(_props: Props) {
                   </button>
                   <a
                     className="button button--secondary"
-                    href={`/notes/${encodeURIComponent(note.id)}`}
+                    href={appPath(`/notes/${encodeURIComponent(note.id)}`)}
                   >
                     Open
                   </a>

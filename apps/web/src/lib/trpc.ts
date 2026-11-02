@@ -1,10 +1,12 @@
+import { appPath } from "./base";
+
 type User = { id: string; email: string };
 
 async function call<T>(path: string, input?: unknown, method?: "GET" | "POST"): Promise<T> {
   const baseUrl =
     window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
       ? "http://127.0.0.1:3001/api/trpc"
-      : "/api/trpc";
+      : appPath("/api/trpc");
   const hasInput = input !== undefined;
   const requestMethod = method ?? (hasInput ? "POST" : "GET");
   const url =

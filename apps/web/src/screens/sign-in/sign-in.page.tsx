@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { signInInput } from "../../../../api/src/modules/users/users.types";
 import { AppShell } from "../../components/app-shell/app-shell";
+import { appPath } from "../../lib/base";
 import { trpc } from "../../lib/trpc";
 import { NotesPage } from "../notes/notes.page";
 
@@ -87,7 +88,7 @@ export function SignInPage() {
         </p>
       )}
       <p className="auth-card__footer">
-        New here? <a href="/">Create an account</a>
+        New here? <a href={appPath("/")}>Create an account</a>
       </p>
     </main>
   );

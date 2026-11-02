@@ -25,6 +25,7 @@ jobs:
     env:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       APP_PORT: ${{ vars.APP_PORT || '80' }}
+      BASE_PATH: ${{ vars.BASE_PATH || '/' }}
       APP: ${{ github.event.repository.name }}
     steps:
       - uses: actions/checkout@v4

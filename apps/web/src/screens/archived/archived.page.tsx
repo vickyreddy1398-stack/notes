@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { appPath } from "../../lib/base";
 import { trpc } from "../../lib/trpc";
 
 type Note = Awaited<ReturnType<typeof trpc.notes.archived>>[number];
@@ -104,7 +105,7 @@ export function ArchivedPage({ onBack }: Props) {
                   </button>
                   <a
                     className="button button--secondary"
-                    href={`/notes/${encodeURIComponent(note.id)}`}
+                    href={appPath(`/notes/${encodeURIComponent(note.id)}`)}
                   >
                     Open
                   </a>

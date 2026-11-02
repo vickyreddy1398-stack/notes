@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { appPath } from "../../lib/base";
 import { trpc } from "../../lib/trpc";
 
 type Props = { email: string; activeScreen: "notes" | "archived"; children: React.ReactNode };
@@ -44,7 +45,7 @@ export function AppShell({ email, activeScreen, children }: Props) {
         >
           ☰
         </button>
-        <a className="topbar__brand" href="/">
+        <a className="topbar__brand" href={appPath("/")}>
           <span className="topbar__mark">N</span>
           <span>Notes</span>
         </a>
@@ -62,14 +63,14 @@ export function AppShell({ email, activeScreen, children }: Props) {
             <a
               className={`sidebar__item${activeScreen === "notes" ? " is-current" : ""}`}
               aria-current={activeScreen === "notes" ? "page" : undefined}
-              href={`/${window.location.search}`}
+              href={appPath(`/${window.location.search}`)}
             >
               ▤ <span>Notes</span>
             </a>
             <a
               className={`sidebar__item${activeScreen === "archived" ? " is-current" : ""}`}
               aria-current={activeScreen === "archived" ? "page" : undefined}
-              href="/archived"
+              href={appPath("/archived")}
             >
               ▱ <span>Archived</span>
             </a>
@@ -79,7 +80,7 @@ export function AppShell({ email, activeScreen, children }: Props) {
           <div className="sidebar__label">Tags</div>
           <nav className="sidebar__nav">
             {tags.map((tag) => (
-              <a className="sidebar__tag" href={`/?tag=${tag.id}`} key={tag.id}>
+              <a className="sidebar__tag" href={appPath(`/?tag=${tag.id}`)} key={tag.id}>
                 {tag.name}
               </a>
             ))}

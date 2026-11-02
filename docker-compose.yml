@@ -32,7 +32,7 @@ services:
       db: { condition: service_healthy }
 
   web:
-    build: { context: ., target: web }
+    build: { context: ., target: web, args: { BASE_PATH: "${BASE_PATH:-/}" } }
     restart: unless-stopped
     ports:
       - "${APP_PORT:-80}:80"

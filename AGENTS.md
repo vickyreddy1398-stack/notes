@@ -89,6 +89,12 @@ same code and message. Add a new case to `lib/errors.ts`; never translate errors
   config, scripts or tests — the repo is checked out somewhere else on the merge gate and on
   every machine. Resolve from the file's own location; Playwright `webServer` uses a relative
   `cwd` (`cwd: "../api"`).
+- **Every app path the browser sees goes through `appPath()`** (`apps/web/src/lib/base.ts`):
+  `href={appPath("/farmers")}`, `window.location.assign(appPath("/login"))`, the tRPC
+  `url: appPath("/api/trpc")`; and the app routes on `currentPath()`, never
+  `window.location.pathname`. The app is deployed under its own prefix
+  (`http://<host>/<app>/…`, the build's `BASE_PATH`), so a bare `"/farmers"` lands on another app
+  or on the front door's app chooser. In dev and tests the prefix is empty, so nothing else changes.
 - **Discrete env vars** `DB_IP DB_PORT DB_USER DB_PASSWORD DB_DATABASE`, read only in `env.ts`.
 - **kebab-case files** named `name.whatiam.ts`. No `utils/` folder — shared code goes in `lib/`.
 

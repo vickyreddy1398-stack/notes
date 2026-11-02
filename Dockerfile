@@ -14,6 +14,9 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 FROM deps AS web-build
+# The URL prefix the SPA is built for (the deploy's BASE_PATH repo variable); "/" by default.
+ARG BASE_PATH=/
+ENV BASE_PATH=$BASE_PATH
 RUN pnpm --filter web build
 
 FROM deps AS api

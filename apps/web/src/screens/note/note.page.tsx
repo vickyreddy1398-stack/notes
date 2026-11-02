@@ -5,6 +5,7 @@ import {
   updateNoteInput,
 } from "../../../../api/src/modules/notes/notes.types";
 import { useTagsRefresh } from "../../components/app-shell/app-shell";
+import { appPath } from "../../lib/base";
 import { trpc } from "../../lib/trpc";
 
 type Props = { id: string };
@@ -79,7 +80,7 @@ export function NotePage({ id }: Props) {
       <main>
         <h1>Note unavailable</h1>
         <p role="alert">{error}</p>
-        <a href="/">Back to Notes</a>
+        <a href={appPath("/")}>Back to Notes</a>
       </main>
     );
   }
@@ -140,7 +141,7 @@ export function NotePage({ id }: Props) {
     try {
       await trpc.notes.delete({ id });
       await refreshTags();
-      window.location.href = "/";
+      window.location.href = appPath("/");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to delete note");
       setDeleting(false);
@@ -191,7 +192,7 @@ export function NotePage({ id }: Props) {
             </button>
             <a
               className="button button--secondary"
-              href="/"
+              href={appPath("/")}
               onClick={(event) => {
                 if (dirty) {
                   event.preventDefault();
@@ -337,7 +338,7 @@ export function NotePage({ id }: Props) {
               >
                 Keep editing
               </button>
-              <a className="button button--danger" href="/" aria-label="Discard changes">
+              <a className="button button--danger" href={appPath("/")} aria-label="Discard changes">
                 Discard
               </a>
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "./components/app-shell/app-shell";
+import { appPath, currentPath } from "./lib/base";
 import { trpc } from "./lib/trpc";
 import { ArchivedPage } from "./screens/archived/archived.page";
 import { NotePage } from "./screens/note/note.page";
@@ -33,7 +34,7 @@ function SignedInWorkspace({
       {archived ? (
         <ArchivedPage
           onBack={() => {
-            window.location.href = "/";
+            window.location.href = appPath("/");
           }}
         />
       ) : (
@@ -66,10 +67,10 @@ function SignedInNote({ id }: { id: string }) {
 }
 
 export function App() {
-  const noteMatch = window.location.pathname.match(/^\/notes\/([^/]+)$/);
+  const noteMatch = currentPath().match(/^\/notes\/([^/]+)$/);
   if (noteMatch) return <SignedInNote id={decodeURIComponent(noteMatch[1])} />;
-  if (window.location.pathname === "/archived") return <SignedInWorkspace archived />;
-  if (window.location.pathname === "/sign-in") return <SignInPage />;
-  if (window.location.pathname === "/") return <SignedInWorkspace fallback="signup" />;
+  if (currentPath() === "/archived") return <SignedInWorkspace archived />;
+  if (currentPath() === "/sign-in") return <SignInPage />;
+  if (currentPath() === "/") return <SignedInWorkspace fallback="signup" />;
   return <SignUpPage />;
 }
